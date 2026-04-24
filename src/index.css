@@ -1,0 +1,88 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@100;200;300;400;500;600;700&family=IBM+Plex+Sans+Thai+Looped:wght@100;200;300;400;500;600;700&family=Sarabun:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@theme {
+  --font-sans: "IBM Plex Sans Thai", "Sarabun", "Inter", ui-sans-serif, system-ui;
+  --font-serif: "Sarabun", ui-serif, Georgia;
+}
+
+:root {
+  background-color: #f3f4f6;
+  color: #1e293b;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-sarabun {
+  font-family: 'Sarabun', sans-serif !important;
+}
+
+.font-thai {
+  font-family: 'IBM Plex Sans Thai', sans-serif !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body, html {
+    background: white !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Reset all fixed/hidden containers that might clip content */
+  div, main, section, article {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: static !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  #printable-area {
+    display: block !important;
+    width: 210mm !important;
+    background: white !important;
+    visibility: visible !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+  }
+
+  #printable-area * {
+    visibility: visible !important;
+  }
+
+  /* Disable transitions and animations during print */
+  *, *::before, *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
