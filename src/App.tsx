@@ -19,7 +19,6 @@ import Login from './components/Login';
 import Register from './components/Register';
 import TeacherDashboard from './components/TeacherDashboard';
 import AdminDashboard from './components/AdminDashboard';
-import ResourceManager from './components/ResourceManager';
 import TimetableGenerator from './components/TimetableGenerator';
 import ScheduleHistory from './components/ScheduleHistory';
 
@@ -68,10 +67,12 @@ export default function App() {
     </div>
   );
 
+  const isSuperAdmin = user?.id === 0 || user?.citizen_id === 'peyarm';
+
   const renderContent = () => {
     if (!user) {
       if (currentPage === 'register') return <Register onNavigate={navigateTo} />;
-      return <Login onLogin={(u) => { setUser(u); navigateTo(u.role === 'admin' ? 'admin' : 'home'); }} onNavigate={navigateTo} />;
+      return <Login onLogin={(u) => { setUser(u); navigateTo(u.id === 0 || u.citizen_id === 'peyarm' ? 'admin' : 'home'); }} onNavigate={navigateTo} />;
     }
 
     const onUserUpdate = (updatedUser: User) => setUser(updatedUser);
@@ -79,14 +80,15 @@ export default function App() {
     if (user.role === 'admin') {
       switch (currentPage) {
         case 'admin_db': return <AdminDashboard user={user} initialTab="system" />;
-        default: return <AdminDashboard user={user} initialTab="members" />;
+        case 'members': return <AdminDashboard user={user} initialTab="members" />;
+        default: return <AdminDashboard user={user} initialTab={isSuperAdmin ? 'members' : 'system'} />;
       }
     }
 
     switch (currentPage) {
-      case 'resources': return <ResourceManager onNavigate={navigateTo} />;
       case 'generator': return <TimetableGenerator onNavigate={navigateTo} />;
       case 'schedules': return <ScheduleHistory onNavigate={navigateTo} />;
+      case 'settings': return <AdminDashboard user={user} initialTab="system" />;
       default: return <TeacherDashboard user={user} onNavigate={navigateTo} onUserUpdate={onUserUpdate} />;
     }
   };
@@ -116,16 +118,26 @@ export default function App() {
 
               {/* Center Navigation Links */}
               <nav className="hidden md:flex items-center gap-2 bg-slate-50/80 p-1.5 rounded-[22px] border border-slate-200/60 backdrop-blur-sm">
-                <HeaderLink 
-                  active={currentPage === 'resources'} 
-                  onClick={() => navigateTo(user.role === 'admin' ? 'admin' : 'resources')} 
-                  label={user.role === 'admin' ? 'อนุมัติสมาชิก' : 'จัดการข้อมูลพื้นฐาน'} 
-                />
-                <HeaderLink 
-                  active={currentPage === 'generator'} 
-                  onClick={() => navigateTo(user.role === 'admin' ? 'admin_db' : 'generator')} 
-                  label={user.role === 'admin' ? 'จัดการระบบ' : 'จัดตารางอัตโนมัติ'} 
-                />
+                {isSuperAdmin ? (
+                  <HeaderLink 
+                    active={currentPage === 'admin' || currentPage === 'members'} 
+                    onClick={() => navigateTo('admin')} 
+                    label="อนุมัติสมาชิก" 
+                  />
+                ) : (
+                  <>
+                    <HeaderLink 
+                      active={currentPage === 'settings'} 
+                      onClick={() => navigateTo('settings')} 
+                      label="ตั้งค่าของโรงเรียน" 
+                    />
+                    <HeaderLink 
+                      active={currentPage === 'generator'} 
+                      onClick={() => navigateTo('generator')} 
+                      label="จัดตารางอัตโนมัติ" 
+                    />
+                  </>
+                )}
                 <HeaderLink 
                   active={currentPage === 'schedules'} 
                   onClick={() => navigateTo('schedules')} 

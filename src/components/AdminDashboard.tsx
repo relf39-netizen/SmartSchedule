@@ -7,11 +7,11 @@ import {
 } from 'lucide-react';
 import { Teacher, SystemSettings, FixedPeriod, Subject, ClassGrade, Room, TeachingAssignment, User } from '../types';
 
-export default function AdminDashboard({ user, initialTab = 'members' }: { user: User, initialTab?: 'members' | 'system' | 'planning' | 'assignments' }) {
+export default function AdminDashboard({ user, initialTab = 'members' }: { user: User, initialTab?: 'members' | 'system' | 'planning' | 'assignments' | 'teachers' | 'subjects' | 'classes' | 'rooms' }) {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
-  const [activeTab, setActiveTab] = useState<'members' | 'planning' | 'assignments' | 'system'>(initialTab as any);
+  const [activeTab, setActiveTab] = useState<'members' | 'planning' | 'assignments' | 'system' | 'teachers' | 'subjects' | 'classes' | 'rooms'>(initialTab as any);
   
   const isSuperAdmin = user.id === 0 || user.citizen_id === 'peyarm';
   const apiBase = '/server.cjs';
@@ -68,7 +68,7 @@ export default function AdminDashboard({ user, initialTab = 'members' }: { user:
   const filteredTeachers = teachers.filter(t => 
     t.name.toLowerCase().includes(filter.toLowerCase()) || 
     t.school.toLowerCase().includes(filter.toLowerCase()) ||
-    t.citizen_id.includes(filter)
+    t.citizen_id?.includes(filter)
   );
 
   const pendingCount = teachers.filter(t => t.status === 'pending').length;
@@ -80,21 +80,31 @@ export default function AdminDashboard({ user, initialTab = 'members' }: { user:
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div>
             <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1 block">ADMINISTRATOR CONTROL PANEL</span>
-            <h1 className="text-2xl font-black text-slate-900 mb-1 tracking-tight">การจัดการระบบการศึกษา</h1>
+            <h1 className="text-2xl font-black text-slate-900 mb-1 tracking-tight">
+               {isSuperAdmin ? 'ระบบจัดการส่วนกลาง' : 'การจัดการโรงเรียน'}
+            </h1>
             <p className="text-slate-500 text-xs">บริหารจัดการสมาชิก ข้อมูลพื้นฐาน ภาระหน้าที่สอน และการตั้งค่าระบบจัดตาราง</p>
           </div>
           
           <nav className="flex flex-wrap bg-slate-100 p-1.5 rounded-2xl shrink-0 gap-1">
-            {isSuperAdmin && <NavTab active={activeTab === 'members'} onClick={() => setActiveTab('members')} icon={<Users size={16} />} label="สมาชิก" count={pendingCount} />}
-            {!isSuperAdmin && <NavTab active={activeTab === 'system'} onClick={() => setActiveTab('system')} icon={<Settings size={16} />} label="ตั้งค่าโรงเรียน" />}
-            {!isSuperAdmin && <NavTab active={activeTab === 'assignments'} onClick={() => setActiveTab('assignments')} icon={<FileText size={16} />} label="ภาระงานสอน" />}
-            <NavTab active={activeTab === 'planning'} onClick={() => setActiveTab('planning')} icon={<Database size={16} />} label="ฐานข้อมูล" />
+            {isSuperAdmin ? (
+              <NavTab active={activeTab === 'members'} onClick={() => setActiveTab('members')} icon={<Users size={16} />} label="สมาชิก" count={pendingCount} />
+            ) : (
+              <>
+                <NavTab active={activeTab === 'system'} onClick={() => setActiveTab('system')} icon={<Settings size={16} />} label="ข้อมูลโรงเรียน" />
+                <NavTab active={activeTab === 'subjects'} onClick={() => setActiveTab('subjects')} icon={<BookMarked size={16} />} label="รายวิชา" />
+                <NavTab active={activeTab === 'classes'} onClick={() => setActiveTab('classes')} icon={<GraduationCap size={16} />} label="ชั้นเรียน/กลุ่ม" />
+                <NavTab active={activeTab === 'rooms'} onClick={() => setActiveTab('rooms')} icon={<MapPin size={16} />} label="ห้องเรียน" />
+                <NavTab active={activeTab === 'assignments'} onClick={() => setActiveTab('assignments')} icon={<FileText size={16} />} label="ภาระงานสอน" />
+              </>
+            )}
+            <NavTab active={activeTab === 'planning'} onClick={() => setActiveTab('planning')} icon={<Database size={16} />} label="จัดการฐานข้อมูล" />
           </nav>
         </div>
       </header>
 
       <div className="bg-[#f8fafc] min-h-[600px]">
-        {activeTab === 'members' && (
+        {activeTab === 'members' && isSuperAdmin && (
           <div className="space-y-6">
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
               <Search className="text-slate-400 ml-2" size={20} />
@@ -121,9 +131,297 @@ export default function AdminDashboard({ user, initialTab = 'members' }: { user:
           </div>
         )}
 
-        {activeTab === 'system' && <SystemSettingsView />}
-        {activeTab === 'assignments' && <AssignmentManager teachers={teachers} />}
+        {activeTab === 'system' && !isSuperAdmin && <SystemSettingsView />}
+        {activeTab === 'assignments' && !isSuperAdmin && <AssignmentManager teachers={teachers} />}
         {activeTab === 'planning' && <DatabaseSyncView />}
+        
+        {/* Resource Tabs */}
+        {activeTab === 'subjects' && !isSuperAdmin && <SubjectManagerTab />}
+        {activeTab === 'classes' && !isSuperAdmin && <ClassManagerTab />}
+        {activeTab === 'rooms' && !isSuperAdmin && <RoomManagerTab />}
+      </div>
+    </div>
+  );
+}
+
+function SubjectManagerTab() {
+  const [items, setItems] = useState<Subject[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newSub, setNewSub] = useState({ code: '', name: '', level: 'ม.1', weekly_hours: 1, color: '#4f46e5' });
+  const apiBase = '/server.cjs';
+
+  const fetchSubjects = () => {
+    fetch(`${apiBase}/api/subjects`)
+      .then(res => res.json())
+      .then(data => {
+        setItems(data);
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => { fetchSubjects(); }, []);
+
+  const handleAdd = async (e: any) => {
+    e.preventDefault();
+    const res = await fetch(`${apiBase}/api/subjects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newSub)
+    });
+    if (res.ok) {
+      setShowAdd(false);
+      fetchSubjects();
+      setNewSub({ code: '', name: '', level: 'ม.1', weekly_hours: 1, color: '#4f46e5' });
+    }
+  };
+
+  return (
+    <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6 animate-in fade-in slide-in-from-bottom-5">
+      <div className="flex items-center justify-between">
+        <h3 className="font-black text-slate-900 text-xl tracking-tight flex items-center gap-3">
+           <BookMarked size={24} className="text-indigo-600" />
+           การจัดการรายวิชา
+        </h3>
+        <button onClick={() => setShowAdd(true)} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-all">
+          <Plus size={16} /> เพิ่มวิชาใหม่
+        </button>
+      </div>
+
+      {showAdd && (
+        <form onSubmit={handleAdd} className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">รหัสวิชา</label>
+              <input required value={newSub.code} onChange={e => setNewSub({...newSub, code: e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="เช่น ท21101" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">ชื่อวิชา</label>
+              <input required value={newSub.name} onChange={e => setNewSub({...newSub, name: e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="เช่น ภาษาไทย" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">ระดับชั้น</label>
+              <select value={newSub.level} onChange={e => setNewSub({...newSub, level: e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm outline-none focus:border-indigo-500">
+                {['ม.1','ม.2','ม.3','ม.4','ม.5','ม.6'].map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">คาบ/สัปดาห์</label>
+              <input type="number" required value={newSub.weekly_hours} onChange={e => setNewSub({...newSub, weekly_hours: parseInt(e.target.value)})} className="w-full bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm outline-none focus:border-indigo-500" min="1" max="10" />
+            </div>
+          </div>
+          <div className="mt-4 flex justify-end gap-2">
+            <button type="button" onClick={() => setShowAdd(false)} className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-slate-600">ยกเลิก</button>
+            <button type="submit" className="bg-indigo-600 text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-indigo-700">บันทึกวิชา</button>
+          </div>
+        </form>
+      )}
+
+      {loading ? <div className="py-20 text-center text-slate-400 animate-pulse text-xs font-bold tracking-widest uppercase">กำลังโหลดข้อมูล...</div> : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {items.map(s => (
+            <div key={s.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-200 transition-all">
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-xs" style={{backgroundColor: s.color || '#4f46e5'}}>
+                  <Hash size={16} />
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.code}</div>
+                  <div className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100">{s.level}</div>
+                </div>
+              </div>
+              <h4 className="font-bold text-slate-900 mb-2">{s.name}</h4>
+              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                <Clock size={12} />
+                <span>{s.weekly_hours} คาบต่อสัปดาห์</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ClassManagerTab() {
+  const [items, setItems] = useState<ClassGrade[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newClass, setNewClass] = useState({ name: '', level: 'ม.1', main_room_id: '' });
+  const apiBase = '/server.cjs';
+
+  const fetchData = async () => {
+    const [cRes, rRes] = await Promise.all([
+      fetch(`${apiBase}/api/classes`),
+      fetch(`${apiBase}/api/rooms`)
+    ]);
+    setItems(await cRes.json());
+    setRooms(await rRes.json());
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  const handleAdd = async (e: any) => {
+    e.preventDefault();
+    const res = await fetch(`${apiBase}/api/classes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newClass)
+    });
+    if (res.ok) {
+      setShowAdd(false);
+      fetchData();
+      setNewClass({ name: '', level: 'ม.1', main_room_id: '' });
+    }
+  };
+
+  return (
+    <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6 animate-in fade-in slide-in-from-bottom-5">
+      <div className="flex items-center justify-between">
+        <h3 className="font-black text-slate-900 text-xl tracking-tight flex items-center gap-3">
+          <GraduationCap size={24} className="text-indigo-600" />
+          การจัดการชั้นเรียน/กลุ่มเรียน
+        </h3>
+        <button onClick={() => setShowAdd(true)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-indigo-700 transition-all">
+          <Plus size={16} /> เพิ่มกลุ่มเรียน
+        </button>
+      </div>
+
+      {showAdd && (
+        <form onSubmit={handleAdd} className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest px-1">ชื่อกลุ่มเรียน</label>
+              <input required value={newClass.name} onChange={e => setNewClass({...newClass, name: e.target.value})} className="w-full bg-white border border-indigo-200 px-4 py-2 rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="เช่น ม.1/1" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest px-1">ระดับชั้น</label>
+              <select value={newClass.level} onChange={e => setNewClass({...newClass, level: e.target.value})} className="w-full bg-white border border-indigo-200 px-4 py-2 rounded-xl text-sm outline-none focus:border-indigo-500">
+                {['ม.1','ม.2','ม.3','ม.4','ม.5','ม.6'].map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest px-1">ห้องประจำ</label>
+              <select value={newClass.main_room_id} onChange={e => setNewClass({...newClass, main_room_id: e.target.value})} className="w-full bg-white border border-indigo-200 px-4 py-2 rounded-xl text-sm outline-none focus:border-indigo-500">
+                <option value="">-- ไม่ระบุ --</option>
+                {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="mt-4 flex justify-end gap-2">
+            <button type="button" onClick={() => setShowAdd(false)} className="px-4 py-2 text-xs font-bold text-slate-400">ยกเลิก</button>
+            <button type="submit" className="bg-indigo-600 text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-indigo-700">ยืนยัน</button>
+          </div>
+        </form>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {items.map(c => (
+          <div key={c.id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center font-black text-xs">
+                {c.level}
+              </div>
+              <h4 className="font-black text-slate-900 leading-none">{c.name}</h4>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-500 bg-slate-50 rounded-xl px-3 py-2 border border-slate-100">
+              <MapPin size={14} className="text-slate-400" />
+              <span>{c.room_name || 'ไม่ระบุห้อง'}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RoomManagerTab() {
+  const [items, setItems] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newRoom, setNewRoom] = useState({ name: '', type: 'ทั่วไป', capacity: 40 });
+  const apiBase = '/server.cjs';
+
+  const fetchRooms = () => {
+    fetch(`${apiBase}/api/rooms`)
+      .then(res => res.json())
+      .then(data => {
+        setItems(data);
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => { fetchRooms(); }, []);
+
+  const handleAdd = async (e: any) => {
+    e.preventDefault();
+    const res = await fetch(`${apiBase}/api/rooms`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newRoom)
+    });
+    if (res.ok) {
+      setShowAdd(false);
+      fetchRooms();
+      setNewRoom({ name: '', type: 'ทั่วไป', capacity: 40 });
+    }
+  };
+
+  return (
+    <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6 animate-in fade-in slide-in-from-bottom-5">
+      <div className="flex items-center justify-between">
+        <h3 className="font-black text-slate-900 text-xl tracking-tight flex items-center gap-3">
+          <MapPin size={24} className="text-indigo-600" />
+          การจัดการห้องเรียน
+        </h3>
+        <button onClick={() => setShowAdd(true)} className="bg-amber-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-amber-700 transition-all">
+          <Plus size={16} /> เพิ่มห้องเรียน
+        </button>
+      </div>
+
+      {showAdd && (
+        <form onSubmit={handleAdd} className="bg-amber-50 p-6 rounded-2xl border border-amber-100">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-amber-600 uppercase tracking-widest px-1">ชื่อห้อง</label>
+              <input required value={newRoom.name} onChange={e => setNewRoom({...newRoom, name: e.target.value})} className="w-full bg-white border border-amber-200 px-4 py-2 rounded-xl text-sm outline-none" placeholder="เช่น ห้อง 211" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-amber-600 uppercase tracking-widest px-1">ประเภท</label>
+              <select value={newRoom.type} onChange={e => setNewRoom({...newRoom, type: e.target.value})} className="w-full bg-white border border-amber-200 px-4 py-2 rounded-xl text-sm outline-none">
+                <option value="ทั่วไป">ทั่วไป</option>
+                <option value="คอมพิวเตอร์">คอมพิวเตอร์</option>
+                <option value="วิทยาศาสตร์">วิทยาศาสตร์</option>
+                <option value="ศิลปะ">ศิลปะ</option>
+                <option value="พละศึกษา">พละศึกษา</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-amber-600 uppercase tracking-widest px-1">ความจุ</label>
+              <input type="number" required value={newRoom.capacity} onChange={e => setNewRoom({...newRoom, capacity: parseInt(e.target.value)})} className="w-full bg-white border border-amber-200 px-4 py-2 rounded-xl text-sm outline-none" min="1" max="100" />
+            </div>
+          </div>
+          <div className="mt-4 flex justify-end gap-2">
+            <button type="button" onClick={() => setShowAdd(false)} className="px-4 py-2 text-xs font-bold text-slate-400">ยกเลิก</button>
+            <button type="submit" className="bg-amber-600 text-white px-6 py-2 rounded-xl text-xs font-bold">บันทึก</button>
+          </div>
+        </form>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {items.map(r => (
+          <div key={r.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-amber-200 transition-all flex items-center gap-4">
+            <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center shrink-0">
+              <Activity size={20} />
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-900 mb-1">{r.name}</h4>
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{r.type} • {r.capacity} Seats</div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
