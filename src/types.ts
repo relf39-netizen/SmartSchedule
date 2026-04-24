@@ -19,41 +19,74 @@ export interface Teacher {
   role: 'teacher' | 'admin';
   login_count?: number;
   last_login?: string;
-  subjects?: string[]; // IDs of subjects they can teach
 }
 
 export interface Subject {
-  id: string;
+  id: number;
   name: string;
   code: string;
-  weeklyHours: number;
+  level: string;
+  weekly_hours: number;
   color?: string;
-  suitableTeachers: number[]; // Teacher IDs
 }
 
 export interface ClassGrade {
-  id: string;
-  level: string; // e.g., Grade 1
-  room: string;  // e.g., Room 101 or 1/1
-  studentCount?: number;
+  id: number;
+  name: string;
+  level: string;
+  main_room_id?: number | null;
+  room_name?: string;
 }
 
 export interface Room {
-  id: string;
+  id: number;
   name: string;
+  type: string;
   capacity?: number;
-  type?: 'regular' | 'lab' | 'sport';
+}
+
+export interface SystemSettings {
+  id: number;
+  school_name: string;
+  academic_year: string;
+  semester: string;
+  periods_per_day: number;
+  period_duration: number;
+  start_time: string;
+}
+
+export interface FixedPeriod {
+  id: number;
+  activity_name: string;
+  day_of_week: string;
+  period_number: number;
+  is_lunch_break: boolean;
+}
+
+export interface TeachingAssignment {
+  id: number;
+  teacher_id: number;
+  teacher_name?: string;
+  teacher_surname?: string;
+  subject_id: number;
+  subject_name?: string;
+  subject_code?: string;
+  class_id: number;
+  class_name?: string;
+  hours_per_week: number;
+  is_double_period: boolean;
+  main_room_id?: number;
+  main_room_name?: string;
+  backup_room_id?: number;
+  backup_room_name?: string;
 }
 
 export interface ScheduleSlot {
-  day: number; // 0=Monday, 4=Friday
-  period: number; // 1-8
-  subjectId: string;
+  day: string; // Day name or index
+  period: number;
+  subjectId: number;
   teacherId: number;
-  roomId?: string;
-}
-
-export interface ClassSchedule {
-  classId: string;
-  slots: ScheduleSlot[];
+  roomId?: number;
+  isFixed?: boolean;
+  activityName?: string;
 }

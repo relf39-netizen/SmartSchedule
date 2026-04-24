@@ -162,6 +162,167 @@ async function startServer() {
     });
   });
 
+  // Settings Routes
+  app.get('/api/settings', async (req, res) => {
+    try {
+      const [rows] = await pool.execute('SELECT * FROM settings ORDER BY id DESC LIMIT 1');
+      res.json(rows[0] || {
+        school_name: 'โรงเรียนสมาร์ทเทคโนโลยี',
+        academic_year: '2567',
+        semester: '1',
+        periods_per_day: 8,
+        period_duration: 50,
+        start_time: '08:30:00'
+      });
+    } catch (error) { res.status(500).send(); }
+  });
+
+  app.post('/api/settings', async (req, res) => {
+    if (req.session?.user?.role !== 'admin') return res.status(403).send();
+    const { school_name, academic_year, semester, periods_per_day, period_duration, start_time } = req.body;
+    try {
+      const [rows] = await pool.execute('SELECT id FROM settings ORDER BY id DESC LIMIT 1');
+      if (rows[0]) {
+        await pool.execute(
+          'UPDATE settings SET school_name=?, academic_year=?, semester=?, periods_per_day=?, period_duration=?, start_time=? WHERE id=?',
+          [school_name, academic_year, semester, periods_per_day, period_duration, start_time, rows[0].id]
+        );
+      } else {
+        await pool.execute(
+          'INSERT INTO settings (school_name, academic_year, semester, periods_per_day, period_duration, start_time) VALUES (?, ?, ?, ?, ?, ?)',
+          [school_name, academic_year, semester, periods_per_day, period_duration, start_time]
+        );
+      }
+      res.json({ success: true });
+    } catch (error) { res.status(500).send(); }
+  });
+
+  // Fixed Periods Routes
+  app.get('/api/fixed-periods', async (req, res) => {
+    try {
+      const [rows] = await pool.execute('SELECT * FROM fixed_periods');
+      res.json(rows);
+    } catch (error) { res.status(500).send(); }
+  });
+
+  app.post('/api/fixed-periods', async (req, res) => {
+    if (req.session?.user?.role !== 'admin') return res.status(403).send();
+    const { activity_name, day_of_week, period_number, is_lunch_break } = req.body;
+    try {
+      await pool.execute(
+        'INSERT INTO fixed_periods (activity_name, day_of_week, period_number, is_lunch_break) VALUES (?, ?, ?, ?)',
+        [activity_name, day_of_week, period_number, is_lunch_break ? 1 : 0]
+      );
+      res.json({ success: true });
+    } catch (error) { res.status(500).send(); }
+  });
+
+  app.delete('/api/fixed-periods/:id', async (req, res) => {
+    if (req.session?.user?.role !== 'admin') return res.status(403).send();
+    try {
+      await pool.execute('DELETE FROM fixed_periods WHERE id = ?', [req.params.id]);
+      res.json({ success: true });
+    } catch (error) { res.status(500).send(); }
+  });
+
+  // Basic Management Routes (Subjects, Classes, Rooms)
+  app.get('/api/subjects', async (req, res) => {
+    try {
+      const [rows] = await pool.execute('SELECT * FROM subjects');
+      res.json(rows);
+    } catch (error) { res.status(500).send(); }
+  });
+
+  app.post('/api/subjects', async (req, res) => {
+    if (req.session?.user?.role !== 'admin') return res.status(403).send();
+    const { code, name, level, weekly_hours, color } = req.body;
+    try {
+      await pool.execute(
+        'INSERT INTO subjects (code, name, level, weekly_hours, color) VALUES (?, ?, ?, ?, ?)',
+        [code, name, level, weekly_hours, color]
+      );
+      res.json({ success: true });
+    } catch (error) { res.status(500).send(); }
+  });
+
+  app.get('/api/classes', async (req, res) => {
+    try {
+      const [rows] = await pool.execute(`
+        SELECT c.*, r.name as room_name 
+        FROM classes c 
+        LEFT JOIN rooms r ON c.main_room_id = r.id
+      `);
+      res.json(rows);
+    } catch (error) { res.status(500).send(); }
+  });
+
+  app.post('/api/classes', async (req, res) => {
+    if (req.session?.user?.role !== 'admin') return res.status(403).send();
+    const { name, level, main_room_id } = req.body;
+    try {
+      await pool.execute('INSERT INTO classes (name, level, main_room_id) VALUES (?, ?, ?)', [name, level, main_room_id]);
+      res.json({ success: true });
+    } catch (error) { res.status(500).send(); }
+  });
+
+  app.get('/api/rooms', async (req, res) => {
+    try {
+      const [rows] = await pool.execute('SELECT * FROM rooms');
+      res.json(rows);
+    } catch (error) { res.status(500).send(); }
+  });
+
+  app.post('/api/rooms', async (req, res) => {
+    if (req.session?.user?.role !== 'admin') return res.status(403).send();
+    const { name, type, capacity } = req.body;
+    try {
+      await pool.execute('INSERT INTO rooms (name, type, capacity) VALUES (?, ?, ?)', [name, type, capacity]);
+      res.json({ success: true });
+    } catch (error) { res.status(500).send(); }
+  });
+
+  // Teaching Assignments
+  app.get('/api/teaching-assignments', async (req, res) => {
+    try {
+      const [rows] = await pool.execute(`
+        SELECT ta.*, t.name as teacher_name, t.surname as teacher_surname, 
+               s.name as subject_name, s.code as subject_code,
+               c.name as class_name,
+               r1.name as main_room_name, r2.name as backup_room_name
+        FROM teaching_assignments ta
+        JOIN teachers t ON ta.teacher_id = t.id
+        JOIN subjects s ON ta.subject_id = s.id
+        JOIN classes c ON ta.class_id = c.id
+        LEFT JOIN rooms r1 ON ta.main_room_id = r1.id
+        LEFT JOIN rooms r2 ON ta.backup_room_id = r2.id
+      `);
+      res.json(rows);
+    } catch (error) { res.status(500).send(); }
+  });
+
+  app.post('/api/teaching-assignments', async (req, res) => {
+    if (req.session?.user?.role !== 'admin') return res.status(403).send();
+    const { teacher_id, subject_id, class_id, hours_per_week, is_double_period, main_room_id, backup_room_id } = req.body;
+    try {
+      await pool.execute(
+        'INSERT INTO teaching_assignments (teacher_id, subject_id, class_id, hours_per_week, is_double_period, main_room_id, backup_room_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [teacher_id, subject_id, class_id, hours_per_week, is_double_period ? 1 : 0, main_room_id, backup_room_id]
+      );
+      res.json({ success: true });
+    } catch (error) { 
+      console.error(error);
+      res.status(500).send(); 
+    }
+  });
+
+  app.delete('/api/teaching-assignments/:id', async (req, res) => {
+    if (req.session?.user?.role !== 'admin') return res.status(403).send();
+    try {
+      await pool.execute('DELETE FROM teaching_assignments WHERE id = ?', [req.params.id]);
+      res.json({ success: true });
+    } catch (error) { res.status(500).send(); }
+  });
+
   // Admin Routes
   app.get('/api/admin/teachers', async (req, res) => {
     if (req.session?.user?.role !== 'admin') return res.status(403).send();
@@ -208,7 +369,32 @@ async function startServer() {
   app.post('/api/admin/db-sync', async (req, res) => {
     if (req.session?.user?.role !== 'admin') return res.status(403).send();
     try {
-      // Idempotent table creation
+      // 1. Settings Table
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS settings (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          school_name VARCHAR(255) NOT NULL,
+          academic_year VARCHAR(10) NOT NULL,
+          semester VARCHAR(10) NOT NULL,
+          periods_per_day INT DEFAULT 8,
+          period_duration INT DEFAULT 50,
+          start_time TIME DEFAULT '08:30:00',
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+      `);
+
+      // 2. Fixed Periods Table
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS fixed_periods (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          activity_name VARCHAR(255) NOT NULL,
+          day_of_week ENUM('Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday') NOT NULL,
+          period_number INT NOT NULL,
+          is_lunch_break TINYINT DEFAULT 0
+        )
+      `);
+
+      // 3. Teachers Table (Migration safe)
       await pool.execute(`
         CREATE TABLE IF NOT EXISTS teachers (
           id INT AUTO_INCREMENT PRIMARY KEY,
@@ -218,66 +404,85 @@ async function startServer() {
           school VARCHAR(200),
           position VARCHAR(100),
           password VARCHAR(255) NOT NULL,
-          ai_key VARCHAR(255),
+          ai_key TEXT,
           role ENUM('teacher', 'admin') DEFAULT 'teacher',
           status ENUM('pending', 'active', 'rejected') DEFAULT 'pending',
+          login_count INT DEFAULT 0,
+          last_login DATETIME NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
 
-      // Migrating existing table to add role column if missing
-      try {
-        await pool.execute('ALTER TABLE teachers ADD COLUMN role ENUM(\'teacher\', \'admin\') DEFAULT \'teacher\'');
-      } catch (e) {}
-      
-      try {
-        await pool.execute('ALTER TABLE teachers ADD COLUMN login_count INT DEFAULT 0');
-      } catch (e) {}
+      // Migration for role column
+      try { await pool.execute('ALTER TABLE teachers ADD COLUMN role ENUM(\'teacher\', \'admin\') DEFAULT \'teacher\''); } catch (e) {}
+      try { await pool.execute('ALTER TABLE teachers MODIFY COLUMN ai_key TEXT'); } catch (e) {}
+      try { await pool.execute('ALTER TABLE teachers ADD COLUMN login_count INT DEFAULT 0'); } catch (e) {}
+      try { await pool.execute('ALTER TABLE teachers ADD COLUMN last_login DATETIME NULL'); } catch (e) {}
 
-      try {
-        await pool.execute('ALTER TABLE teachers ADD COLUMN last_login TIMESTAMP NULL');
-      } catch (e) {}
-
+      // 4. Subjects Table
       await pool.execute(`
         CREATE TABLE IF NOT EXISTS subjects (
           id INT AUTO_INCREMENT PRIMARY KEY,
+          code VARCHAR(50) UNIQUE NOT NULL,
           name VARCHAR(200) NOT NULL,
-          code VARCHAR(50),
-          weekly_hours INT NOT NULL,
-          color VARCHAR(20)
+          level VARCHAR(50) NOT NULL,
+          weekly_hours INT DEFAULT 1,
+          color VARCHAR(20) DEFAULT '#4f46e5'
         )
       `);
 
-      await pool.execute(`
-        CREATE TABLE IF NOT EXISTS classes (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          name VARCHAR(100) NOT NULL,
-          level VARCHAR(50),
-          room_id INT
-        )
-      `);
-
+      // 5. Rooms Table
       await pool.execute(`
         CREATE TABLE IF NOT EXISTS rooms (
           id INT AUTO_INCREMENT PRIMARY KEY,
           name VARCHAR(100) NOT NULL,
-          type VARCHAR(50)
+          type VARCHAR(100) DEFAULT 'ทั่วไป',
+          capacity INT DEFAULT 40
         )
       `);
 
+      // 6. Classes Table
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS classes (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          name VARCHAR(100) NOT NULL,
+          level VARCHAR(50) NOT NULL,
+          main_room_id INT,
+          FOREIGN KEY (main_room_id) REFERENCES rooms(id) ON DELETE SET NULL
+        )
+      `);
+
+      // 7. Teaching Assignments Table
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS teaching_assignments (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          teacher_id INT NOT NULL,
+          subject_id INT NOT NULL,
+          class_id INT NOT NULL,
+          hours_per_week INT NOT NULL,
+          is_double_period TINYINT DEFAULT 0,
+          main_room_id INT,
+          backup_room_id INT,
+          FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE,
+          FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
+          FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE
+        )
+      `);
+
+      // 8. Timetables Table
       await pool.execute(`
         CREATE TABLE IF NOT EXISTS timetables (
           id INT AUTO_INCREMENT PRIMARY KEY,
-          teacher_id INT NOT NULL,
+          teacher_id INT,
+          class_id INT,
           title VARCHAR(255) NOT NULL,
           data LONGTEXT NOT NULL,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (teacher_id) REFERENCES teachers(id)
+          academic_year VARCHAR(10),
+          semester VARCHAR(10),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
 
-      // Add columns if they don't exist (using a simple check)
-      // This is a basic way to ensure schema evolution
       res.json({ success: true, message: 'ฐานข้อมูลได้รับการปรับปรุงเรียบร้อยแล้ว' });
     } catch (error) { 
       console.error('DB Sync Error:', error);
