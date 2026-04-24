@@ -76,9 +76,10 @@ function TabButton({ active, onClick, icon, label }: any) {
 function TeacherManager() {
   const [items, setItems] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
+  const apiBase = '/server.cjs';
 
   useEffect(() => {
-    fetch('/api/admin/teachers')
+    fetch(`${apiBase}/api/admin/teachers`)
       .then(res => res.json())
       .then(data => {
         setItems(data);
@@ -137,9 +138,10 @@ function SubjectManager() {
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [newSub, setNewSub] = useState({ code: '', name: '', level: 'ม.1', weekly_hours: 1, color: '#4f46e5' });
+  const apiBase = '/server.cjs';
 
   const fetchSubjects = () => {
-    fetch('/api/subjects')
+    fetch(`${apiBase}/api/subjects`)
       .then(res => res.json())
       .then(data => {
         setItems(data);
@@ -151,7 +153,7 @@ function SubjectManager() {
 
   const handleAdd = async (e: any) => {
     e.preventDefault();
-    const res = await fetch('/api/subjects', {
+    const res = await fetch(`${apiBase}/api/subjects`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newSub)
@@ -234,9 +236,13 @@ function ClassManager() {
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [newClass, setNewClass] = useState({ name: '', level: 'ม.1', main_room_id: '' });
+  const apiBase = '/server.cjs';
 
   const fetchData = async () => {
-    const [cRes, rRes] = await Promise.all([fetch('/api/classes'), fetch('/api/rooms')]);
+    const [cRes, rRes] = await Promise.all([
+      fetch(`${apiBase}/api/classes`),
+      fetch(`${apiBase}/api/rooms`)
+    ]);
     setItems(await cRes.json());
     setRooms(await rRes.json());
     setLoading(false);
@@ -246,7 +252,7 @@ function ClassManager() {
 
   const handleAdd = async (e: any) => {
     e.preventDefault();
-    const res = await fetch('/api/classes', {
+    const res = await fetch(`${apiBase}/api/classes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newClass)
@@ -324,9 +330,10 @@ function RoomManager() {
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [newRoom, setNewRoom] = useState({ name: '', type: 'ทั่วไป', capacity: 40 });
+  const apiBase = '/server.cjs';
 
   const fetchRooms = () => {
-    fetch('/api/rooms')
+    fetch(`${apiBase}/api/rooms`)
       .then(res => res.json())
       .then(data => {
         setItems(data);
@@ -338,7 +345,7 @@ function RoomManager() {
 
   const handleAdd = async (e: any) => {
     e.preventDefault();
-    const res = await fetch('/api/rooms', {
+    const res = await fetch(`${apiBase}/api/rooms`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newRoom)

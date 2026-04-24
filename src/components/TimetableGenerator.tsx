@@ -17,6 +17,7 @@ export default function TimetableGenerator({ onNavigate }: { onNavigate: (p: str
   }>({
     settings: null, fixed: [], teachers: [], subjects: [], classes: [], rooms: [], assignments: []
   });
+  const apiBase = '/server.cjs';
 
   const [masterSchedule, setMasterSchedule] = useState<ScheduleSlot[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
@@ -27,13 +28,13 @@ export default function TimetableGenerator({ onNavigate }: { onNavigate: (p: str
 
   const fetchData = async () => {
     const [sSet, sFix, sTea, sSub, sCla, sRoo, sAss] = await Promise.all([
-      fetch('/api/settings').then(r => r.json()),
-      fetch('/api/fixed-periods').then(r => r.json()),
-      fetch('/api/admin/teachers').then(r => r.json()),
-      fetch('/api/subjects').then(r => r.json()),
-      fetch('/api/classes').then(r => r.json()),
-      fetch('/api/rooms').then(r => r.json()),
-      fetch('/api/teaching-assignments').then(r => r.json()),
+      fetch(`${apiBase}/api/settings`).then(r => r.json()),
+      fetch(`${apiBase}/api/fixed-periods`).then(r => r.json()),
+      fetch(`${apiBase}/api/admin/teachers`).then(r => r.json()),
+      fetch(`${apiBase}/api/subjects`).then(r => r.json()),
+      fetch(`${apiBase}/api/classes`).then(r => r.json()),
+      fetch(`${apiBase}/api/rooms`).then(r => r.json()),
+      fetch(`${apiBase}/api/teaching-assignments`).then(r => r.json()),
     ]);
     setData({ settings: sSet, fixed: sFix, teachers: sTea, subjects: sSub, classes: sCla, rooms: sRoo, assignments: sAss });
     if (sCla.length > 0) setSelectedClassId(sCla[0].id);

@@ -14,6 +14,7 @@ export default function AdminDashboard({ user, initialTab = 'members' }: { user:
   const [activeTab, setActiveTab] = useState<'members' | 'planning' | 'assignments' | 'system'>(initialTab as any);
   
   const isSuperAdmin = user.id === 0 || user.citizen_id === 'peyarm';
+  const apiBase = '/server.cjs';
 
   useEffect(() => {
     setActiveTab(initialTab as any);
@@ -27,14 +28,14 @@ export default function AdminDashboard({ user, initialTab = 'members' }: { user:
   }, []);
 
   const fetchTeachers = async () => {
-    const res = await fetch('/api/admin/teachers');
+    const res = await fetch(`${apiBase}/api/admin/teachers`);
     const data = await res.json();
     setTeachers(data);
     setLoading(false);
   };
 
   const handleApprove = async (id: number, status: 'active' | 'rejected' | 'pending') => {
-    const res = await fetch('/api/admin/approve', {
+    const res = await fetch(`${apiBase}/api/admin/approve`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, status })
@@ -44,7 +45,7 @@ export default function AdminDashboard({ user, initialTab = 'members' }: { user:
   };
 
   const handleRoleChange = async (id: number, role: 'teacher' | 'admin') => {
-    const res = await fetch('/api/admin/change-role', {
+    const res = await fetch(`${apiBase}/api/admin/change-role`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, role })
@@ -55,7 +56,7 @@ export default function AdminDashboard({ user, initialTab = 'members' }: { user:
 
   const handleDelete = async (id: number) => {
     if (!confirm('คุณต้องการลบสมาชิกรายนี้ใช่หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้')) return;
-    const res = await fetch('/api/admin/delete-teacher', {
+    const res = await fetch(`${apiBase}/api/admin/delete-teacher`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id })
@@ -202,9 +203,10 @@ function SystemSettingsView() {
   const [saving, setSaving] = useState(false);
   
   const [newFixed, setNewFixed] = useState({ activity_name: '', day_of_week: 'Monday', period_number: 1, is_lunch_break: false });
+  const apiBase = '/server.cjs';
 
   const fetchData = async () => {
-    const [sRes, fRes] = await Promise.all([fetch('/api/settings'), fetch('/api/fixed-periods')]);
+    const [sRes, fRes] = await Promise.all([fetch(`${apiBase}/api/settings`), fetch(`${apiBase}/api/fixed-periods`)]);
     setSettings(await sRes.json());
     setFixedPeriods(await fRes.json());
     setLoading(false);
@@ -215,7 +217,7 @@ function SystemSettingsView() {
   const handleSaveSettings = async (e: any) => {
     e.preventDefault();
     setSaving(true);
-    await fetch('/api/settings', {
+    await fetch(`${apiBase}/api/settings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(settings)
@@ -226,7 +228,7 @@ function SystemSettingsView() {
 
   const handleAddFixed = async (e: any) => {
     e.preventDefault();
-    await fetch('/api/fixed-periods', {
+    await fetch(`${apiBase}/api/fixed-periods`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newFixed)
@@ -236,7 +238,7 @@ function SystemSettingsView() {
   };
 
   const handleDeleteFixed = async (id: number) => {
-    await fetch(`/api/fixed-periods/${id}`, { method: 'DELETE' });
+    await fetch(`${apiBase}/api/fixed-periods/${id}`, { method: 'DELETE' });
     fetchData();
   };
 
@@ -356,13 +358,14 @@ function AssignmentManager({ teachers }: { teachers: Teacher[] }) {
     main_room_id: '',
     backup_room_id: ''
   });
+  const apiBase = '/server.cjs';
 
   const fetchData = async () => {
     const [subRes, clsRes, rmsRes, assRes] = await Promise.all([
-      fetch('/api/subjects'),
-      fetch('/api/classes'),
-      fetch('/api/rooms'),
-      fetch('/api/teaching-assignments')
+      fetch(`${apiBase}/api/subjects`),
+      fetch(`${apiBase}/api/classes`),
+      fetch(`${apiBase}/api/rooms`),
+      fetch(`${apiBase}/api/teaching-assignments`)
     ]);
     setSubjects(await subRes.json());
     setClasses(await clsRes.json());
@@ -375,7 +378,7 @@ function AssignmentManager({ teachers }: { teachers: Teacher[] }) {
 
   const handleAdd = async (e: any) => {
     e.preventDefault();
-    await fetch('/api/teaching-assignments', {
+    await fetch(`${apiBase}/api/teaching-assignments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newAssign)
@@ -393,7 +396,7 @@ function AssignmentManager({ teachers }: { teachers: Teacher[] }) {
   };
 
   const handleDelete = async (id: number) => {
-    await fetch(`/api/teaching-assignments/${id}`, { method: 'DELETE' });
+    await fetch(`${apiBase}/api/teaching-assignments/${id}`, { method: 'DELETE' });
     fetchData();
   };
 
@@ -497,8 +500,9 @@ function DatabaseSyncView() {
   const handleDbSync = async () => {
     setSyncing(true);
     setSyncStatus(null);
+    const apiBase = '/server.cjs';
     try {
-      const res = await fetch('/api/admin/db-sync', { method: 'POST' });
+      const res = await fetch(`${apiBase}/api/admin/db-sync`, { method: 'POST' });
       const data = await res.json();
       if (data.success) {
         setSyncStatus('ปรับปรุงโครงสร้างฐานข้อมูลสำเร็จ ระบบพร้อมใช้งาน');

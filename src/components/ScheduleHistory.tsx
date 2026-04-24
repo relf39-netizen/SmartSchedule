@@ -4,10 +4,25 @@ import { motion } from 'motion/react';
 
 export default function ScheduleHistory({ onNavigate }: { onNavigate: (p: string, param?: string) => void }) {
   const [loading, setLoading] = useState(true);
+  const [timetables, setTimetables] = useState<any[]>([]);
+  const apiBase = '/server.cjs';
 
   useEffect(() => {
-    setTimeout(() => setLoading(false), 800);
+    fetch(`${apiBase}/api/timetables`)
+      .then(res => res.json())
+      .then(data => {
+        setTimetables(data);
+        setLoading(false);
+      });
   }, []);
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('ยืนยันการลบตารางสอน?')) return;
+    const res = await fetch(`${apiBase}/api/timetables/${id}/delete`, { method: 'POST' });
+    if (res.ok) {
+      setTimetables(timetables.filter(t => t.id !== id));
+    }
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -44,20 +59,26 @@ export default function ScheduleHistory({ onNavigate }: { onNavigate: (p: string
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <ScheduleCard 
-            title="ตารางเรียนภาคเรียนที่ 1/2567" 
-            date="24 เม.ย. 2567" 
-            classes={6}
-            teachers={12}
-            status="Complete"
-          />
-          <ScheduleCard 
-            title="ตารางเรียนปรับพื้นฐาน" 
-            date="10 เม.ย. 2567" 
-            classes={2}
-            teachers={4}
-            status="Draft"
-          />
+          {timetables.map((t: any) => (
+            <ScheduleCard 
+              key={t.id}
+              id={t.id}
+              title={t.name} 
+              date={new Date(t.created_at).toLocaleDateString('th-TH')} 
+              classes={t.class_count || 0}
+              teachers={t.teacher_count || 0}
+              status={t.status || 'Complete'}
+              onDelete={handleDelete}
+              onOpen={() => onNavigate('generator', t.id.toString())}
+            />
+          ))}
+          
+          {timetables.length === 0 && (
+            <div className="col-span-full py-12 text-center bg-white rounded-3xl border border-dashed border-slate-200 text-slate-400 font-bold uppercase text-xs tracking-widest">
+              ไม่พบตารางสอนที่บันทึกไว้
+            </div>
+          )}
+
           <div className="border-2 border-dashed border-slate-200 rounded-[32px] p-8 flex flex-col items-center justify-center text-center group cursor-pointer hover:border-indigo-300 transition-all hover:bg-indigo-50/20" onClick={() => onNavigate('generator')}>
              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Calendar className="text-slate-300 group-hover:text-indigo-400" size={32} />
@@ -70,7 +91,7 @@ export default function ScheduleHistory({ onNavigate }: { onNavigate: (p: string
   );
 }
 
-function ScheduleCard({ title, date, classes, teachers, status }: any) {
+function ScheduleCard({ id, title, date, classes, teachers, status, onDelete, onOpen }: any) {
   return (
     <motion.div whileHover={{ y: -5 }} className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm relative overflow-hidden group transition-all hover:border-indigo-100 hover:shadow-xl hover:shadow-indigo-900/5">
       <div className="flex items-start justify-between mb-8">
@@ -102,11 +123,11 @@ function ScheduleCard({ title, date, classes, teachers, status }: any) {
       </div>
 
       <div className="flex items-center gap-2 pt-2">
-         <button className="flex-1 bg-slate-900 text-white py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-200">
+         <button onClick={onOpen} className="flex-1 bg-slate-900 text-white py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-200">
             เปิดดูรายละเอียด
             <ChevronRight size={14} />
          </button>
-         <button className="p-3.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl border border-slate-100 transition-all">
+         <button onClick={() => onDelete(id)} className="p-3.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl border border-slate-100 transition-all">
             <Trash2 size={18} />
          </button>
       </div>
