@@ -1,5 +1,9 @@
 -- สคริปต์สำหรับสร้างฐานข้อมูลใน phpMyAdmin (MySQL)
--- สำหรับระบบ EduGen AI
+-- สำหรับระบบ SmartSchedule AI (SchoolOS Timetable)
+
+-- 1. สร้างฐานข้อมูล
+CREATE DATABASE IF NOT EXISTS `schoolos_timetable` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `schoolos_timetable`;
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
