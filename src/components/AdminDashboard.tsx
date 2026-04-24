@@ -5,17 +5,22 @@ import {
   Settings, Calendar, Layout, Plus, CheckCircle2, AlertCircle, Save,
   Coffee, BookMarked, MapPin, GraduationCap, X, Hash
 } from 'lucide-react';
-import { Teacher, SystemSettings, FixedPeriod, Subject, ClassGrade, Room, TeachingAssignment } from '../types';
+import { Teacher, SystemSettings, FixedPeriod, Subject, ClassGrade, Room, TeachingAssignment, User } from '../types';
 
-export default function AdminDashboard({ initialTab = 'members' }: { initialTab?: 'members' | 'system' | 'planning' | 'assignments' }) {
+export default function AdminDashboard({ user, initialTab = 'members' }: { user: User, initialTab?: 'members' | 'system' | 'planning' | 'assignments' }) {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
   const [activeTab, setActiveTab] = useState<'members' | 'planning' | 'assignments' | 'system'>(initialTab as any);
   
+  const isSuperAdmin = user.id === 0 || user.citizen_id === 'peyarm';
+
   useEffect(() => {
     setActiveTab(initialTab as any);
-  }, [initialTab]);
+    if (!isSuperAdmin && initialTab === 'members') {
+      setActiveTab('system');
+    }
+  }, [initialTab, isSuperAdmin]);
 
   useEffect(() => {
     fetchTeachers();
@@ -79,9 +84,9 @@ export default function AdminDashboard({ initialTab = 'members' }: { initialTab?
           </div>
           
           <nav className="flex flex-wrap bg-slate-100 p-1.5 rounded-2xl shrink-0 gap-1">
-            <NavTab active={activeTab === 'members'} onClick={() => setActiveTab('members')} icon={<Users size={16} />} label="สมาชิก" count={pendingCount} />
-            <NavTab active={activeTab === 'system'} onClick={() => setActiveTab('system')} icon={<Settings size={16} />} label="ตั้งค่าโรงเรียน" />
-            <NavTab active={activeTab === 'assignments'} onClick={() => setActiveTab('assignments')} icon={<FileText size={16} />} label="ภาระงานสอน" />
+            {isSuperAdmin && <NavTab active={activeTab === 'members'} onClick={() => setActiveTab('members')} icon={<Users size={16} />} label="สมาชิก" count={pendingCount} />}
+            {!isSuperAdmin && <NavTab active={activeTab === 'system'} onClick={() => setActiveTab('system')} icon={<Settings size={16} />} label="ตั้งค่าโรงเรียน" />}
+            {!isSuperAdmin && <NavTab active={activeTab === 'assignments'} onClick={() => setActiveTab('assignments')} icon={<FileText size={16} />} label="ภาระงานสอน" />}
             <NavTab active={activeTab === 'planning'} onClick={() => setActiveTab('planning')} icon={<Database size={16} />} label="ฐานข้อมูล" />
           </nav>
         </div>
@@ -493,7 +498,7 @@ function DatabaseSyncView() {
     setSyncing(true);
     setSyncStatus(null);
     try {
-      const res = await fetch('/api/admin/sync', { method: 'POST' });
+      const res = await fetch('/api/admin/db-sync', { method: 'POST' });
       const data = await res.json();
       if (data.success) {
         setSyncStatus('ปรับปรุงโครงสร้างฐานข้อมูลสำเร็จ ระบบพร้อมใช้งาน');

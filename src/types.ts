@@ -1,5 +1,6 @@
 export interface User {
   id: number;
+  citizen_id?: string;
   role: 'teacher' | 'admin';
   name: string;
   surname?: string;

@@ -78,8 +78,8 @@ export default function App() {
 
     if (user.role === 'admin') {
       switch (currentPage) {
-        case 'admin_db': return <AdminDashboard initialTab="system" />;
-        default: return <AdminDashboard initialTab="members" />;
+        case 'admin_db': return <AdminDashboard user={user} initialTab="system" />;
+        default: return <AdminDashboard user={user} initialTab="members" />;
       }
     }
 
