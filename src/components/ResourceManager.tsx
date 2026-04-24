@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, BookOpen, Warehouse, History, Plus, Trash2, Edit2, Save, X, ChevronRight, Hash, GraduationCap, MapPin, Building } from 'lucide-react';
+import { Users, BookOpen, Warehouse, History, Plus, Trash2, Edit2, Save, X, ChevronRight, Hash, GraduationCap, MapPin, Building, Clock } from 'lucide-react';
 import { Teacher, Subject, ClassGrade, Room } from '../types';
 
 export default function ResourceManager({ onNavigate }: { onNavigate: (p: string) => void }) {
