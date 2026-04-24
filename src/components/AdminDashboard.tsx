@@ -248,7 +248,7 @@ function ClassManagerTab() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [newClass, setNewClass] = useState({ name: '', level: 'ม.1', main_room_id: '' });
+  const [newClass, setNewClass] = useState({ level: 'ป.1', room_number: '1' });
   const apiBase = '/server.cjs';
 
   const fetchData = async () => {
@@ -265,15 +265,20 @@ function ClassManagerTab() {
 
   const handleAdd = async (e: any) => {
     e.preventDefault();
+    // Transform to existing schema: name = level/room_number
+    const payload = {
+      name: `${newClass.level}/${newClass.room_number}`,
+      level: newClass.level,
+      main_room_id: null
+    };
     const res = await fetch(`${apiBase}/api/classes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newClass)
+      body: JSON.stringify(payload)
     });
     if (res.ok) {
       setShowAdd(false);
       fetchData();
-      setNewClass({ name: '', level: 'ม.1', main_room_id: '' });
     }
   };
 
@@ -285,34 +290,27 @@ function ClassManagerTab() {
           การจัดการชั้นเรียน/กลุ่มเรียน
         </h3>
         <button onClick={() => setShowAdd(true)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-indigo-700 transition-all">
-          <Plus size={16} /> เพิ่มกลุ่มเรียน
+          <Plus size={16} /> เพิ่มชั้นเรียน
         </button>
       </div>
 
       {showAdd && (
         <form onSubmit={handleAdd} className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest px-1">ชื่อกลุ่มเรียน</label>
-              <input required value={newClass.name} onChange={e => setNewClass({...newClass, name: e.target.value})} className="w-full bg-white border border-indigo-200 px-4 py-2 rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="เช่น ม.1/1" />
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest px-1">ระดับชั้น</label>
               <select value={newClass.level} onChange={e => setNewClass({...newClass, level: e.target.value})} className="w-full bg-white border border-indigo-200 px-4 py-2 rounded-xl text-sm outline-none focus:border-indigo-500">
-                {['ม.1','ม.2','ม.3','ม.4','ม.5','ม.6'].map(m => <option key={m} value={m}>{m}</option>)}
+                {['อ.1','อ.2','อ.3','ป.1','ป.2','ป.3','ป.4','ป.5','ป.6','ม.1','ม.2','ม.3','ม.4','ม.5','ม.6'].map(m => <option key={m} value={m}>{m}</option>)}
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest px-1">ห้องประจำ</label>
-              <select value={newClass.main_room_id} onChange={e => setNewClass({...newClass, main_room_id: e.target.value})} className="w-full bg-white border border-indigo-200 px-4 py-2 rounded-xl text-sm outline-none focus:border-indigo-500">
-                <option value="">-- ไม่ระบุ --</option>
-                {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select>
+              <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest px-1">ห้องที่ (เช่น 1, 2, ก, ข)</label>
+              <input required value={newClass.room_number} onChange={e => setNewClass({...newClass, room_number: e.target.value})} className="w-full bg-white border border-indigo-200 px-4 py-2 rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="เช่น 1" />
             </div>
           </div>
           <div className="mt-4 flex justify-end gap-2">
             <button type="button" onClick={() => setShowAdd(false)} className="px-4 py-2 text-xs font-bold text-slate-400">ยกเลิก</button>
-            <button type="submit" className="bg-indigo-600 text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-indigo-700">ยืนยัน</button>
+            <button type="submit" className="bg-indigo-600 text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-indigo-700">บันทึกข้อมูล</button>
           </div>
         </form>
       )}
@@ -320,18 +318,18 @@ function ClassManagerTab() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {items.map(c => (
           <div key={c.id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-3 mb-2">
               <div className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center font-black text-xs">
                 {c.level}
               </div>
               <h4 className="font-black text-slate-900 leading-none">{c.name}</h4>
             </div>
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-500 bg-slate-50 rounded-xl px-3 py-2 border border-slate-100">
-              <MapPin size={14} className="text-slate-400" />
-              <span>{c.room_name || 'ไม่ระบุห้อง'}</span>
-            </div>
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ระดับ {c.level}</div>
           </div>
         ))}
+        {items.length === 0 && !loading && (
+          <div className="col-span-full py-10 text-center text-slate-400 border border-dashed border-slate-200 rounded-3xl text-sm">ยังไม่มีข้อมูลชั้นเรียน</div>
+        )}
       </div>
     </div>
   );
@@ -341,7 +339,7 @@ function RoomManagerTab() {
   const [items, setItems] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [newRoom, setNewRoom] = useState({ name: '', type: 'ทั่วไป', capacity: 40 });
+  const [newRoom, setNewRoom] = useState({ code: '', name: '' });
   const apiBase = '/server.cjs';
 
   const fetchRooms = () => {
@@ -357,16 +355,30 @@ function RoomManagerTab() {
 
   const handleAdd = async (e: any) => {
     e.preventDefault();
+    // code + name combined or used separately
+    // The schema was { school, name, type, capacity }
+    // We'll map code/name to name/type or just use as is
+    const payload = {
+      name: newRoom.name,
+      type: newRoom.code, // Store code in type for now or vice versa
+      capacity: 40
+    };
     const res = await fetch(`${apiBase}/api/rooms`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newRoom)
+      body: JSON.stringify(payload)
     });
     if (res.ok) {
       setShowAdd(false);
       fetchRooms();
-      setNewRoom({ name: '', type: 'ทั่วไป', capacity: 40 });
+      setNewRoom({ code: '', name: '' });
     }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('ต้องการลบห้องเรียนนี้?')) return;
+    await fetch(`${apiBase}/api/rooms/${id}`, { method: 'DELETE' });
+    fetchRooms();
   };
 
   return (
@@ -383,43 +395,38 @@ function RoomManagerTab() {
 
       {showAdd && (
         <form onSubmit={handleAdd} className="bg-amber-50 p-6 rounded-2xl border border-amber-100">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-amber-600 uppercase tracking-widest px-1">ชื่อห้อง</label>
-              <input required value={newRoom.name} onChange={e => setNewRoom({...newRoom, name: e.target.value})} className="w-full bg-white border border-amber-200 px-4 py-2 rounded-xl text-sm outline-none" placeholder="เช่น ห้อง 211" />
+              <label className="text-[10px] font-black text-amber-600 uppercase tracking-widest px-1">รหัสห้องเรียน</label>
+              <input required value={newRoom.code} onChange={e => setNewRoom({...newRoom, code: e.target.value})} className="w-full bg-white border border-amber-200 px-4 py-2 rounded-xl text-sm outline-none" placeholder="เช่น 211" />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-amber-600 uppercase tracking-widest px-1">ประเภท</label>
-              <select value={newRoom.type} onChange={e => setNewRoom({...newRoom, type: e.target.value})} className="w-full bg-white border border-amber-200 px-4 py-2 rounded-xl text-sm outline-none">
-                <option value="ทั่วไป">ทั่วไป</option>
-                <option value="คอมพิวเตอร์">คอมพิวเตอร์</option>
-                <option value="วิทยาศาสตร์">วิทยาศาสตร์</option>
-                <option value="ศิลปะ">ศิลปะ</option>
-                <option value="พละศึกษา">พละศึกษา</option>
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-amber-600 uppercase tracking-widest px-1">ความจุ</label>
-              <input type="number" required value={newRoom.capacity} onChange={e => setNewRoom({...newRoom, capacity: parseInt(e.target.value)})} className="w-full bg-white border border-amber-200 px-4 py-2 rounded-xl text-sm outline-none" min="1" max="100" />
+              <label className="text-[10px] font-black text-amber-600 uppercase tracking-widest px-1">ชื่อห้องเรียน</label>
+              <input required value={newRoom.name} onChange={e => setNewRoom({...newRoom, name: e.target.value})} className="w-full bg-white border border-amber-200 px-4 py-2 rounded-xl text-sm outline-none" placeholder="เช่น ห้องปฏิบัติการทางภาษา" />
             </div>
           </div>
           <div className="mt-4 flex justify-end gap-2">
             <button type="button" onClick={() => setShowAdd(false)} className="px-4 py-2 text-xs font-bold text-slate-400">ยกเลิก</button>
-            <button type="submit" className="bg-amber-600 text-white px-6 py-2 rounded-xl text-xs font-bold">บันทึก</button>
+            <button type="submit" className="bg-amber-600 text-white px-6 py-2 rounded-xl text-xs font-bold">บันทึกข้อมูล</button>
           </div>
         </form>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {items.map(r => (
-          <div key={r.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-amber-200 transition-all flex items-center gap-4">
-            <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center shrink-0">
-              <Activity size={20} />
+          <div key={r.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-amber-200 transition-all group relative">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center shrink-0">
+                <MapPin size={20} />
+              </div>
+              <div className="overflow-hidden">
+                <h4 className="font-bold text-slate-900 mb-0.5 truncate">{r.name}</h4>
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">CODE: {r.type}</div>
+              </div>
             </div>
-            <div>
-              <h4 className="font-bold text-slate-900 mb-1">{r.name}</h4>
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{r.type} • {r.capacity} Seats</div>
-            </div>
+            <button onClick={() => handleDelete(r.id)} className="absolute top-2 right-2 p-1 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
+              <X size={14} />
+            </button>
           </div>
         ))}
       </div>
@@ -500,7 +507,8 @@ function SystemSettingsView() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
-  const [newFixed, setNewFixed] = useState({ activity_name: '', day_of_week: 'Monday', period_number: 1, is_lunch_break: false });
+  const [newFixed, setNewFixed] = useState({ activity_name: '', day_of_week: 'Monday', period_number: 8, is_lunch_break: false });
+  const [lunchPeriod, setLunchPeriod] = useState(4);
   const apiBase = '/server.cjs';
 
   const fetchData = async () => {
@@ -521,7 +529,7 @@ function SystemSettingsView() {
       body: JSON.stringify(settings)
     });
     setSaving(false);
-    alert('บันทึกการตั้งค่าระบบเรียบร้อยแล้ว');
+    alert('บันทึกข้อมูลเรียบร้อยแล้ว');
   };
 
   const handleAddFixed = async (e: any) => {
@@ -531,8 +539,24 @@ function SystemSettingsView() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newFixed)
     });
-    setNewFixed({ activity_name: '', day_of_week: 'Monday', period_number: 1, is_lunch_break: false });
+    setNewFixed({ activity_name: '', day_of_week: 'Monday', period_number: 8, is_lunch_break: false });
     fetchData();
+  };
+
+  const handleSaveLunch = async () => {
+    await fetch(`${apiBase}/api/fixed-periods`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        activity_name: 'พักรับประทานอาหารกลางวัน',
+        day_of_week: 'Monday',
+        period_number: lunchPeriod,
+        is_lunch_break: true,
+        apply_all_week: true
+      })
+    });
+    fetchData();
+    alert('บันทึกเวลาพักกลางวัน 5 วันเรียบร้อยแล้ว');
   };
 
   const handleDeleteFixed = async (id: number) => {
@@ -544,96 +568,125 @@ function SystemSettingsView() {
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-5 duration-700">
-      <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center"><School size={20} /></div>
-          <h3 className="text-xl font-black text-slate-900 tracking-tight">ข้อมูลพื้นฐานสถานศึกษา</h3>
+      <div className="space-y-8">
+        {/* School Base Settings */}
+        <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center"><School size={20} /></div>
+            <h3 className="text-xl font-black text-slate-900 tracking-tight">ข้อมูลพื้นฐานสถานศึกษา</h3>
+          </div>
+          <form onSubmit={handleSaveSettings} className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">ชื่อโรงเรียน</label>
+              <input required value={settings?.school_name} onChange={e => setSettings({...settings!, school_name: e.target.value})} className="w-full bg-slate-50 border border-slate-100 px-4 py-3 rounded-2xl text-sm font-bold outline-none focus:bg-white focus:border-indigo-500 transition-all" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">ปีการศึกษา</label>
+                <input required value={settings?.academic_year} onChange={e => setSettings({...settings!, academic_year: e.target.value})} className="w-full bg-slate-50 border border-slate-100 px-4 py-3 rounded-2xl text-sm font-bold outline-none focus:bg-white focus:border-indigo-500 transition-all" placeholder="เช่น 2567" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">ภาคเรียน</label>
+                <select value={settings?.semester} onChange={e => setSettings({...settings!, semester: e.target.value})} className="w-full bg-slate-50 border border-slate-100 px-4 py-3 rounded-2xl text-sm font-bold outline-none focus:bg-white focus:border-indigo-500 transition-all">
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="ฤดูร้อน">ฤดูร้อน</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">จำนวนคาบ/วัน</label>
+                <input type="number" required value={settings?.periods_per_day} onChange={e => setSettings({...settings!, periods_per_day: parseInt(e.target.value)})} className="w-full bg-slate-50 border border-slate-100 px-4 py-3 rounded-2xl text-sm font-bold outline-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">เวลาคาบละ (นาที)</label>
+                <input type="number" required value={settings?.period_duration} onChange={e => setSettings({...settings!, period_duration: parseInt(e.target.value)})} className="w-full bg-slate-50 border border-slate-100 px-4 py-3 rounded-2xl text-sm font-bold outline-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">เวลาเริ่มคาบแรก</label>
+                <input type="time" required value={settings?.start_time} onChange={e => setSettings({...settings!, start_time: e.target.value})} className="w-full bg-slate-50 border border-slate-100 px-4 py-3 rounded-2xl text-sm font-bold outline-none" />
+              </div>
+            </div>
+            <button disabled={saving} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-slate-800 transition-all flex items-center justify-center gap-2">
+              <Save size={18} />
+              {saving ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่าขอมูลโรงเรียน'}
+            </button>
+          </form>
         </div>
 
-        <form onSubmit={handleSaveSettings} className="space-y-4">
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">ชื่อโรงเรียน</label>
-            <input required value={settings?.school_name} onChange={e => setSettings({...settings!, school_name: e.target.value})} className="w-full bg-slate-50 border border-slate-100 px-4 py-3 rounded-2xl text-sm font-bold outline-none focus:bg-white focus:border-indigo-500 transition-all" />
+        {/* Separate Lunch Break Section */}
+        <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center"><Coffee size={20} /></div>
+            <h3 className="text-xl font-black text-slate-900 tracking-tight">กำหนดเวลาพักกลางวัน</h3>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">ปีการศึกษา</label>
-              <input required value={settings?.academic_year} onChange={e => setSettings({...settings!, academic_year: e.target.value})} className="w-full bg-slate-50 border border-slate-100 px-4 py-3 rounded-2xl text-sm font-bold outline-none focus:bg-white focus:border-indigo-500 transition-all" placeholder="เช่น 2567" />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">ภาคเรียน</label>
-              <select value={settings?.semester} onChange={e => setSettings({...settings!, semester: e.target.value})} className="w-full bg-slate-50 border border-slate-100 px-4 py-3 rounded-2xl text-sm font-bold outline-none focus:bg-white focus:border-indigo-500 transition-all">
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="ฤดูร้อน">ฤดูร้อน</option>
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">จำนวนคาบ/วัน</label>
-              <input type="number" required value={settings?.periods_per_day} onChange={e => setSettings({...settings!, periods_per_day: parseInt(e.target.value)})} className="w-full bg-slate-50 border border-slate-100 px-4 py-3 rounded-2xl text-sm font-bold outline-none" />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">เวลาคาบละ (นาที)</label>
-              <input type="number" required value={settings?.period_duration} onChange={e => setSettings({...settings!, period_duration: parseInt(e.target.value)})} className="w-full bg-slate-50 border border-slate-100 px-4 py-3 rounded-2xl text-sm font-bold outline-none" />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">เวลาเริ่มคาบแรก</label>
-              <input type="time" required value={settings?.start_time} onChange={e => setSettings({...settings!, start_time: e.target.value})} className="w-full bg-slate-50 border border-slate-100 px-4 py-3 rounded-2xl text-sm font-bold outline-none" />
+          <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100">
+            <p className="text-xs font-bold text-orange-700 mb-4">* ระบบจะทำการบล็อกคาบที่เลือกนี้ทั้ง 5 วัน (จันทร์-ศุกร์) เพื่อเป็นเวลาพักกลางวัน</p>
+            <div className="flex items-center gap-4">
+              <div className="flex-1 space-y-1">
+                <label className="text-[10px] font-black text-orange-400 uppercase tracking-widest px-1">เลือกคาบที่พักกลางวัน</label>
+                <select value={lunchPeriod} onChange={e => setLunchPeriod(parseInt(e.target.value))} className="w-full bg-white border border-orange-200 px-4 py-3 rounded-xl text-sm font-bold outline-none">
+                  {[1,2,3,4,5,6,7,8,9,10].map(p => <option key={p} value={p}>คาบที่ {p}</option>)}
+                </select>
+              </div>
+              <button onClick={handleSaveLunch} className="bg-orange-600 text-white px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-orange-700 transition-all mt-5">บันทึกเวลาพัก</button>
             </div>
           </div>
-          <button disabled={saving} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2">
-            <Save size={18} />
-            {saving ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่าระบบ'}
-          </button>
-        </form>
+        </div>
       </div>
 
-      <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center"><Calendar size={20} /></div>
-          <h3 className="text-xl font-black text-slate-900 tracking-tight">คาบกิจกรรมคงที่ (Fixed Periods)</h3>
-        </div>
-        
-        <form onSubmit={handleAddFixed} className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">ชื่อกิจกรรม</label>
-              <input required value={newFixed.activity_name} onChange={e => setNewFixed({...newFixed, activity_name: e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm outline-none" placeholder="เช่น ชุมนุม, พักเที่ยง" />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">วันในสัปดาห์</label>
-              <select value={newFixed.day_of_week} onChange={e => setNewFixed({...newFixed, day_of_week: e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm outline-none">
-                {['Monday','Tuesday','Wednesday','Thursday','Friday'].map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-            </div>
+      <div className="space-y-8">
+        {/* Fixed Activity (Non-Lunch) */}
+        <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center"><Calendar size={20} /></div>
+            <h3 className="text-xl font-black text-slate-900 tracking-tight">กิจกรรมคงที่ (เช่น ชุมนุม, ประชุม)</h3>
           </div>
-          <div className="grid grid-cols-2 gap-4 items-center">
+          
+          <form onSubmit={handleAddFixed} className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">ชื่อกิจกรรม</label>
+                <input required value={newFixed.activity_name} onChange={e => setNewFixed({...newFixed, activity_name: e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm outline-none" placeholder="เช่น กิจกรรมชุมนุม" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">วันในสัปดาห์</label>
+                <select value={newFixed.day_of_week} onChange={e => setNewFixed({...newFixed, day_of_week: e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm outline-none">
+                  {['Monday','Tuesday','Wednesday','Thursday','Friday'].map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+            </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">คาบเรียนที่</label>
               <input type="number" required value={newFixed.period_number} onChange={e => setNewFixed({...newFixed, period_number: parseInt(e.target.value)})} className="w-full bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm outline-none" min="1" max="15" />
             </div>
-            <div className="flex items-center gap-2 h-full pt-4">
-              <input type="checkbox" id="islunch" checked={newFixed.is_lunch_break} onChange={e => setNewFixed({...newFixed, is_lunch_break: e.target.checked})} className="w-4 h-4 accent-indigo-600" />
-              <label htmlFor="islunch" className="text-xs font-bold text-slate-600 cursor-pointer select-none">เป็นช่วงพักกลางวัน</label>
+            <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all">
+              <Plus size={14} /> เพิ่มกิจกรรมคงที่
+            </button>
+          </form>
+
+          <div className="space-y-3">
+             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">รายการที่กำหนดไว้</h4>
+             <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+              {fixedPeriods.length === 0 ? (
+                <div className="py-10 text-center text-slate-400 text-xs font-bold uppercase tracking-widest border border-dashed border-slate-200 rounded-2xl">ยังไม่มีกิจกรรมที่บันทึกไว้</div>
+              ) : fixedPeriods.sort((a,b) => a.day_of_week.localeCompare(b.day_of_week) || a.period_number - b.period_number).map(f => (
+                <div key={f.id} className={`flex items-center justify-between p-4 border rounded-2xl group transition-all ${f.is_lunch_break ? 'bg-orange-50 border-orange-100' : 'bg-white border-slate-100 hover:border-amber-200'}`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${f.is_lunch_break ? 'bg-orange-200 text-orange-700' : 'bg-slate-100 text-slate-500'}`}>
+                      {f.is_lunch_break ? <Coffee size={14} /> : <Calendar size={14} />}
+                    </div>
+                    <div>
+                      <div className="text-xs font-black text-slate-900">{f.activity_name}</div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{f.day_of_week} • คาบที่ {f.period_number}</div>
+                    </div>
+                  </div>
+                  <button onClick={() => handleDeleteFixed(f.id)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
+                </div>
+              ))}
             </div>
           </div>
-          <button type="submit" className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-800 transition-all">
-            <Plus size={14} /> เพิ่มภาระคงที่เข้าสู่ระบบ
-          </button>
-        </form>
-
-        <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-          {fixedPeriods.map(f => (
-            <div key={f.id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl group hover:border-amber-200 transition-all">
-              <div>
-                <div className="text-xs font-black text-slate-900">{f.activity_name}</div>
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{f.day_of_week} • คาบที่ {f.period_number}</div>
-              </div>
-              <button onClick={() => handleDeleteFixed(f.id)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"><X size={16} /></button>
-            </div>
-          ))}
         </div>
       </div>
     </div>

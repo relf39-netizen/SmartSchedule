@@ -214,14 +214,34 @@ async function startServer() {
   app.post('/api/fixed-periods', async (req, res) => {
     const user = req.session?.user;
     if (user?.role !== 'admin' || !user.school) return res.status(403).send();
-    const { activity_name, day_of_week, period_number, is_lunch_break } = req.body;
+    const { activity_name, day_of_week, period_number, is_lunch_break, apply_all_week } = req.body;
     try {
-      await pool.execute(
-        'INSERT INTO fixed_periods (school, activity_name, day_of_week, period_number, is_lunch_break) VALUES (?, ?, ?, ?, ?)',
-        [user.school, activity_name, day_of_week, period_number, is_lunch_break ? 1 : 0]
-      );
+      if (apply_all_week) {
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        for (const day of days) {
+          // Check if already exists to prevent duplicates
+          const [existing] = await pool.execute(
+            'SELECT id FROM fixed_periods WHERE school=? AND activity_name=? AND day_of_week=? AND period_number=?',
+            [user.school, activity_name, day, period_number]
+          );
+          if (existing.length === 0) {
+            await pool.execute(
+              'INSERT INTO fixed_periods (school, activity_name, day_of_week, period_number, is_lunch_break) VALUES (?, ?, ?, ?, ?)',
+              [user.school, activity_name, day, period_number, is_lunch_break ? 1 : 0]
+            );
+          }
+        }
+      } else {
+        await pool.execute(
+          'INSERT INTO fixed_periods (school, activity_name, day_of_week, period_number, is_lunch_break) VALUES (?, ?, ?, ?, ?)',
+          [user.school, activity_name, day_of_week, period_number, is_lunch_break ? 1 : 0]
+        );
+      }
       res.json({ success: true });
-    } catch (error) { res.status(500).send(); }
+    } catch (error) { 
+      console.error('Fixed Period Error:', error);
+      res.status(500).send(); 
+    }
   });
 
   app.delete('/api/fixed-periods/:id', async (req, res) => {
@@ -310,30 +330,40 @@ async function startServer() {
                c.name as class_name,
                r1.name as main_room_name, r2.name as backup_room_name
         FROM teaching_assignments ta
-        JOIN teachers t ON ta.teacher_id = t.id
-        JOIN subjects s ON ta.subject_id = s.id
-        JOIN classes c ON ta.class_id = c.id
+        LEFT JOIN teachers t ON ta.teacher_id = t.id
+        LEFT JOIN subjects s ON ta.subject_id = s.id
+        LEFT JOIN classes c ON ta.class_id = c.id
         LEFT JOIN rooms r1 ON ta.main_room_id = r1.id
         LEFT JOIN rooms r2 ON ta.backup_room_id = r2.id
         WHERE ta.school = ?
       `, [school]);
       res.json(rows);
-    } catch (error) { res.status(500).send(); }
+    } catch (error) { 
+      console.error('Fetch Assignments Error:', error);
+      res.status(500).send(); 
+    }
   });
 
   app.post('/api/teaching-assignments', async (req, res) => {
     const user = req.session?.user;
     if (user?.role !== 'admin' || !user.school) return res.status(403).send();
     const { teacher_id, subject_id, class_id, hours_per_week, is_double_period, main_room_id, backup_room_id } = req.body;
+    
+    console.log('Adding Teaching Assignment:', req.body);
+    
     try {
+      if (!teacher_id || !subject_id || !class_id) {
+        return res.status(400).json({ success: false, message: 'Missing required fields' });
+      }
+
       await pool.execute(
         'INSERT INTO teaching_assignments (school, teacher_id, subject_id, class_id, hours_per_week, is_double_period, main_room_id, backup_room_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [user.school, teacher_id, subject_id, class_id, hours_per_week, is_double_period ? 1 : 0, main_room_id, backup_room_id]
+        [user.school, teacher_id, subject_id, class_id, hours_per_week, is_double_period ? 1 : 0, main_room_id || null, backup_room_id || null]
       );
       res.json({ success: true });
     } catch (error) { 
-      console.error(error);
-      res.status(500).send(); 
+      console.error('Teaching Assignment Error:', error);
+      res.status(500).json({ success: false, message: error.message }); 
     }
   });
 
