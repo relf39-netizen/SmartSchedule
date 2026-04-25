@@ -217,7 +217,7 @@ async function startServer() {
     const { activity_name, day_of_week, period_number, is_lunch_break, apply_all_week } = req.body;
     try {
       if (apply_all_week) {
-        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        const days = req.body.days_th || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
         for (const day of days) {
           // Check if already exists to prevent duplicates
           const [existing] = await pool.execute(
@@ -464,12 +464,14 @@ async function startServer() {
           id INT AUTO_INCREMENT PRIMARY KEY,
           school VARCHAR(200) NOT NULL,
           activity_name VARCHAR(255) NOT NULL,
-          day_of_week ENUM('Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday') NOT NULL,
+          day_of_week VARCHAR(50) NOT NULL,
           period_number INT NOT NULL,
           is_lunch_break TINYINT DEFAULT 0,
           INDEX (school)
         )
       `);
+
+      try { await pool.execute('ALTER TABLE fixed_periods MODIFY COLUMN day_of_week VARCHAR(50)'); } catch (e) {}
 
       // 3. Teachers Table (Migration safe)
       await pool.execute(`

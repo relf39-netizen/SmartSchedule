@@ -18,20 +18,25 @@ export default function AdminDashboard({ user, initialTab = 'members' }: { user:
 
   useEffect(() => {
     setActiveTab(initialTab as any);
-    if (!isSuperAdmin && initialTab === 'members') {
-      setActiveTab('system');
-    }
+    // School admins can see members too, but only for their school
   }, [initialTab, isSuperAdmin]);
 
   useEffect(() => {
     fetchTeachers();
-  }, []);
+  }, [activeTab]); // Refetch when switching back to members
 
   const fetchTeachers = async () => {
-    const res = await fetch(`${apiBase}/api/admin/teachers`);
-    const data = await res.json();
-    setTeachers(data);
-    setLoading(false);
+    try {
+      const res = await fetch(`${apiBase}/api/admin/teachers`);
+      if (res.ok) {
+        const data = await res.json();
+        setTeachers(data);
+      }
+      setLoading(false);
+    } catch (err) {
+      console.error('Fetch Teachers Error:', err);
+      setLoading(false);
+    }
   };
 
   const handleApprove = async (id: number, status: 'active' | 'rejected' | 'pending') => {
@@ -87,9 +92,8 @@ export default function AdminDashboard({ user, initialTab = 'members' }: { user:
           </div>
           
           <nav className="flex flex-wrap bg-slate-100 p-1.5 rounded-2xl shrink-0 gap-1">
-            {isSuperAdmin ? (
-              <NavTab active={activeTab === 'members'} onClick={() => setActiveTab('members')} icon={<Users size={16} />} label="สมาชิก" count={pendingCount} />
-            ) : (
+            <NavTab active={activeTab === 'members'} onClick={() => setActiveTab('members')} icon={<Users size={16} />} label={isSuperAdmin ? "จัดการสมาชิกทั่วประเทศ" : "ข้อมูลครู/บุคลากร"} count={!isSuperAdmin ? 0 : pendingCount} />
+            {!isSuperAdmin && (
               <>
                 <NavTab active={activeTab === 'system'} onClick={() => setActiveTab('system')} icon={<Settings size={16} />} label="ข้อมูลโรงเรียน" />
                 <NavTab active={activeTab === 'subjects'} onClick={() => setActiveTab('subjects')} icon={<BookMarked size={16} />} label="รายวิชา" />
@@ -104,17 +108,24 @@ export default function AdminDashboard({ user, initialTab = 'members' }: { user:
       </header>
 
       <div className="bg-[#f8fafc] min-h-[600px]">
-        {activeTab === 'members' && isSuperAdmin && (
+        {activeTab === 'members' && (
           <div className="space-y-6">
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
-              <Search className="text-slate-400 ml-2" size={20} />
-              <input 
-                type="text" 
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                placeholder="ค้นหาตามชื่อ, โรงเรียน, หรือเลขบัตรประชาชน..."
-                className="flex-1 bg-transparent border-none outline-none py-2 text-sm placeholder:text-slate-300"
-              />
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 flex-1">
+                <Search className="text-slate-400 ml-2" size={20} />
+                <input 
+                  type="text" 
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                  placeholder="ค้นหาตามชื่อ, โรงเรียน, หรือเลขบัตรประชาชน..."
+                  className="flex-1 bg-transparent border-none outline-none py-2 text-sm placeholder:text-slate-300"
+                />
+              </div>
+              {!isSuperAdmin && (
+                <div className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-100">
+                  ครูในโรงเรียนของคุณ
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 gap-6">
@@ -124,7 +135,7 @@ export default function AdminDashboard({ user, initialTab = 'members' }: { user:
                 <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 text-slate-400 font-bold uppercase tracking-widest text-xs">ไม่พบข้อมูลสมาชิก</div>
               ) : (
                 filteredTeachers.map(t => (
-                  <TeacherRow key={t.id} t={t} onApprove={handleApprove} onRoleChange={handleRoleChange} onDelete={handleDelete} />
+                  <TeacherRow key={t.id} t={t} onApprove={handleApprove} onRoleChange={handleRoleChange} onDelete={handleDelete} isSuperAdmin={isSuperAdmin} />
                 ))
               )}
             </div>
@@ -164,15 +175,23 @@ function SubjectManagerTab() {
 
   const handleAdd = async (e: any) => {
     e.preventDefault();
-    const res = await fetch(`${apiBase}/api/subjects`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newSub)
-    });
-    if (res.ok) {
-      setShowAdd(false);
-      fetchSubjects();
-      setNewSub({ code: '', name: '', level: 'ม.1', weekly_hours: 1, color: '#4f46e5' });
+    try {
+      const res = await fetch(`${apiBase}/api/subjects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSub)
+      });
+      if (res.ok) {
+        setShowAdd(false);
+        fetchSubjects();
+        setNewSub({ code: '', name: '', level: 'ม.1', weekly_hours: 1, color: '#4f46e5' });
+        alert('บันทึกวิชาสำเร็จ');
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(`ผิดพลาด: ${err.message || 'ไม่สามารถบันทึกได้'}`);
+      }
+    } catch (err) {
+      alert('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');
     }
   };
 
@@ -271,14 +290,21 @@ function ClassManagerTab() {
       level: newClass.level,
       main_room_id: null
     };
-    const res = await fetch(`${apiBase}/api/classes`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (res.ok) {
-      setShowAdd(false);
-      fetchData();
+    try {
+      const res = await fetch(`${apiBase}/api/classes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        setShowAdd(false);
+        fetchData();
+        alert('บันทึกข้อมูลเรียบร้อยแล้ว');
+      } else {
+        alert('ไม่สามารถบันทึกข้อมูลได้');
+      }
+    } catch (err) {
+      alert('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');
     }
   };
 
@@ -363,15 +389,22 @@ function RoomManagerTab() {
       type: newRoom.code, // Store code in type for now or vice versa
       capacity: 40
     };
-    const res = await fetch(`${apiBase}/api/rooms`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (res.ok) {
-      setShowAdd(false);
-      fetchRooms();
-      setNewRoom({ code: '', name: '' });
+    try {
+      const res = await fetch(`${apiBase}/api/rooms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        setShowAdd(false);
+        fetchRooms();
+        setNewRoom({ code: '', name: '' });
+        alert('บันทึกห้องเรียนสำเร็จ');
+      } else {
+        alert('ไม่สามารถบันทึกข้อมูลได้');
+      }
+    } catch (err) {
+      alert('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');
     }
   };
 
@@ -449,7 +482,7 @@ function NavTab({ active, onClick, icon, label, count }: any) {
   );
 }
 
-function TeacherRow({ t, onApprove, onRoleChange, onDelete }: any) {
+function TeacherRow({ t, onApprove, onRoleChange, onDelete, isSuperAdmin }: any) {
   return (
     <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:border-indigo-200 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 group">
       <div className="flex items-center gap-4">
@@ -487,7 +520,9 @@ function TeacherRow({ t, onApprove, onRoleChange, onDelete }: any) {
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
-        <button onClick={() => onRoleChange(t.id, t.role === 'admin' ? 'teacher' : 'admin')} className="bg-slate-50 text-[9px] font-black text-slate-500 uppercase px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-900 hover:text-white transition-all">CHANGE ROLE</button>
+        {isSuperAdmin && (
+          <button onClick={() => onRoleChange(t.id, t.role === 'admin' ? 'teacher' : 'admin')} className="bg-slate-50 text-[9px] font-black text-slate-500 uppercase px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-900 hover:text-white transition-all">CHANGE ROLE</button>
+        )}
         {t.status === 'pending' ? (
           <>
             <button onClick={() => onApprove(t.id, 'active')} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg active:scale-95 uppercase text-[10px]">APPROVE</button>
@@ -508,9 +543,11 @@ function SystemSettingsView() {
   const [saving, setSaving] = useState(false);
   
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [newFixed, setNewFixed] = useState({ activity_name: '', day_of_week: 'Monday', period_number: 8, is_lunch_break: false });
+  const [newFixed, setNewFixed] = useState({ activity_name: '', day_of_week: 'วันจันทร์', period_number: 8, is_lunch_break: false });
   const [lunchPeriod, setLunchPeriod] = useState(4);
   const apiBase = '/server.cjs';
+  
+  const DAYS_TH = ['วันจันทร์', 'วันอังคาร', 'วันพุธ', 'วันพฤหัสบดี', 'วันศุกร์'];
 
   const fetchData = async () => {
     try {
@@ -559,12 +596,13 @@ function SystemSettingsView() {
       });
       
       if (res.ok) {
-        setNewFixed({ activity_name: '', day_of_week: 'Monday', period_number: 8, is_lunch_break: false });
+        setNewFixed({ activity_name: '', day_of_week: 'วันจันทร์', period_number: 8, is_lunch_break: false });
         setEditingId(null);
         fetchData();
         alert(editingId ? 'แก้ไขกิจกรรมสำเร็จ' : 'เพิ่มกิจกรรมสำเร็จ');
       } else {
-        alert('ไม่สามารถบันทึกกิจกรรมได้');
+        const errData = await res.json().catch(() => ({}));
+        alert(`ไม่สามารถบันทึกกิจกรรมได้: ${errData.message || ''}`);
       }
     } catch (err) {
       alert('เกิดข้อผิดพลาดในการบันทึก');
@@ -589,10 +627,11 @@ function SystemSettingsView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           activity_name: 'พักรับประทานอาหารกลางวัน',
-          day_of_week: 'Monday',
+          day_of_week: 'วันจันทร์', // Standard start
           period_number: lunchPeriod,
           is_lunch_break: true,
-          apply_all_week: true
+          apply_all_week: true,
+          days_th: DAYS_TH // Send the full list for backend to handle
         })
       });
       if (res.ok) {
@@ -707,13 +746,15 @@ function SystemSettingsView() {
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">วันในสัปดาห์</label>
                 <select value={newFixed.day_of_week} onChange={e => setNewFixed({...newFixed, day_of_week: e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm outline-none">
-                  {['Monday','Tuesday','Wednesday','Thursday','Friday'].map(d => <option key={d} value={d}>{d}</option>)}
+                  {DAYS_TH.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">คาบเรียนที่</label>
-              <input type="number" required value={newFixed.period_number} onChange={e => setNewFixed({...newFixed, period_number: parseInt(e.target.value)})} className="w-full bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm outline-none" min="1" max="15" />
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">เลือกคาบเรียน</label>
+              <select value={newFixed.period_number} onChange={e => setNewFixed({...newFixed, period_number: parseInt(e.target.value)})} className="w-full bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm outline-none">
+                {[1,2,3,4,5,6,7,8,9,10,11,12].map(p => <option key={p} value={p}>คาบที่ {p}</option>)}
+              </select>
             </div>
             <button type="submit" className={`w-full text-white py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${editingId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
               {editingId ? <Save size={14} /> : <Plus size={14} />}
@@ -732,7 +773,7 @@ function SystemSettingsView() {
               {fixedPeriods.length === 0 ? (
                 <div className="py-10 text-center text-slate-400 text-xs font-bold uppercase tracking-widest border border-dashed border-slate-200 rounded-2xl">ยังไม่มีกิจกรรมที่บันทึกไว้</div>
               ) : [...fixedPeriods].sort((a,b) => {
-                const dayOrder: Record<string, number> = { 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5 };
+                const dayOrder: Record<string, number> = { 'วันจันทร์': 1, 'วันอังคาร': 2, 'วันพุธ': 3, 'วันพฤหัสบดี': 4, 'วันศุกร์': 5, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5 };
                 return (dayOrder[a.day_of_week] || 9) - (dayOrder[b.day_of_week] || 9) || a.period_number - b.period_number;
               }).map(f => (
                 <div key={f.id} className={`flex items-center justify-between p-4 border rounded-2xl group transition-all ${f.is_lunch_break ? 'bg-orange-50 border-orange-100' : 'bg-white border-slate-100 hover:border-amber-200'}`}>
