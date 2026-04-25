@@ -79,7 +79,7 @@ export default function App() {
 
     if (user.role === 'admin') {
       switch (currentPage) {
-        case 'admin_db': return <AdminDashboard user={user} initialTab="system" />;
+        case 'admin_db': return <AdminDashboard user={user} initialTab="planning" />;
         case 'members': return <AdminDashboard user={user} initialTab="members" />;
         default: return <AdminDashboard user={user} initialTab={isSuperAdmin ? 'members' : 'system'} />;
       }
@@ -119,17 +119,24 @@ export default function App() {
               {/* Center Navigation Links */}
               <nav className="hidden md:flex items-center gap-2 bg-slate-50/80 p-1.5 rounded-[22px] border border-slate-200/60 backdrop-blur-sm">
                 {isSuperAdmin ? (
-                  <HeaderLink 
-                    active={currentPage === 'admin' || currentPage === 'members'} 
-                    onClick={() => navigateTo('admin')} 
-                    label="อนุมัติสมาชิก" 
-                  />
+                  <>
+                    <HeaderLink 
+                      active={currentPage === 'admin' || currentPage === 'members'} 
+                      onClick={() => navigateTo('admin')} 
+                      label="จัดการสมาชิก" 
+                    />
+                    <HeaderLink 
+                      active={currentPage === 'admin_db'} 
+                      onClick={() => navigateTo('admin_db')} 
+                      label="จัดการฐานข้อมูล" 
+                    />
+                  </>
                 ) : (
                   <>
                     <HeaderLink 
                       active={currentPage === 'settings'} 
                       onClick={() => navigateTo('settings')} 
-                      label="ตั้งค่าของโรงเรียน" 
+                      label="ข้อมูลโรงเรียน" 
                     />
                     <HeaderLink 
                       active={currentPage === 'generator'} 

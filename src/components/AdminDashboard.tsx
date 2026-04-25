@@ -92,17 +92,22 @@ export default function AdminDashboard({ user, initialTab = 'members' }: { user:
           </div>
           
           <nav className="flex flex-wrap bg-slate-100 p-1.5 rounded-2xl shrink-0 gap-1">
-            <NavTab active={activeTab === 'members'} onClick={() => setActiveTab('members')} icon={<Users size={16} />} label={isSuperAdmin ? "จัดการสมาชิกทั่วประเทศ" : "ข้อมูลครู/บุคลากร"} count={!isSuperAdmin ? 0 : pendingCount} />
-            {!isSuperAdmin && (
+            {isSuperAdmin ? (
+              <>
+                <NavTab active={activeTab === 'members'} onClick={() => setActiveTab('members')} icon={<Users size={16} />} label="จัดการสมาชิกทั่วประเทศ" count={pendingCount} />
+                <NavTab active={activeTab === 'planning'} onClick={() => setActiveTab('planning')} icon={<Database size={16} />} label="จัดการฐานข้อมูล" />
+              </>
+            ) : (
               <>
                 <NavTab active={activeTab === 'system'} onClick={() => setActiveTab('system')} icon={<Settings size={16} />} label="ข้อมูลโรงเรียน" />
                 <NavTab active={activeTab === 'subjects'} onClick={() => setActiveTab('subjects')} icon={<BookMarked size={16} />} label="รายวิชา" />
                 <NavTab active={activeTab === 'classes'} onClick={() => setActiveTab('classes')} icon={<GraduationCap size={16} />} label="ชั้นเรียน/กลุ่ม" />
                 <NavTab active={activeTab === 'rooms'} onClick={() => setActiveTab('rooms')} icon={<MapPin size={16} />} label="ห้องเรียน" />
                 <NavTab active={activeTab === 'assignments'} onClick={() => setActiveTab('assignments')} icon={<FileText size={16} />} label="ภาระงานสอน" />
+                <NavTab active={activeTab === 'members'} onClick={() => setActiveTab('members')} icon={<Users size={16} />} label="ข้อมูลครู/บุคลากร" />
+                <NavTab active={activeTab === 'planning'} onClick={() => setActiveTab('planning')} icon={<Database size={16} />} label="จัดการฐานข้อมูล" />
               </>
             )}
-            <NavTab active={activeTab === 'planning'} onClick={() => setActiveTab('planning')} icon={<Database size={16} />} label="จัดการฐานข้อมูล" />
           </nav>
         </div>
       </header>
@@ -786,9 +791,9 @@ function SystemSettingsView() {
                       <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{f.day_of_week} • คาบที่ {f.period_number}</div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                    <button onClick={() => handleEditFixed(f)} className="p-2 text-slate-300 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-all"><Activity size={16} /></button>
-                    <button onClick={() => handleDeleteFixed(f.id)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"><Trash2 size={16} /></button>
+                  <div className="flex items-center gap-1 transition-all">
+                    <button onClick={() => handleEditFixed(f)} className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-all" title="แก้ไข"><Activity size={16} /></button>
+                    <button onClick={() => handleDeleteFixed(f.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" title="ลบ"><Trash2 size={16} /></button>
                   </div>
                 </div>
               ))}
@@ -974,6 +979,7 @@ function DatabaseSyncView() {
       const data = await res.json();
       if (data.success) {
         setSyncStatus('ปรับปรุงโครงสร้างฐานข้อมูลสำเร็จ ระบบพร้อมใช้งาน');
+        setTimeout(() => setSyncStatus(null), 5000);
       } else {
         setSyncStatus(`เกิดข้อผิดพลาด: ${data.message}`);
       }
@@ -989,22 +995,29 @@ function DatabaseSyncView() {
         <Database size={48} className={syncing ? 'animate-bounce' : ''} />
       </div>
       <div>
-        <h3 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">การจัดการทรัพยากรระดับสูง</h3>
-        <p className="text-slate-500 max-w-md mx-auto text-sm">อัปเดตและปรับแต่งโครงสร้างข้อมูล หากคุณทำการเปลี่ยนแปลงชุดข้อมูลขนาดใหญ่ผ่านสคริปต์ภายนอก หรือระบบแจ้งเตือนว่าฐานข้อมูลไม่ตรงกัน</p>
+        <h3 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">จัดการฐานระบบ (Super Admin)</h3>
+        <p className="text-slate-500 max-w-md mx-auto text-sm italic font-medium">ส่วนนี้สำหรับผู้ดูแลระบบสูงสุดเพื่อทำการตรวจสอบความถูกต้องของตารางข้อมูล และอัปเดตโครงสร้างระบบให้เป็นเวอร์ชันล่าสุด</p>
       </div>
       
+      <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 w-full max-w-sm">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">สถานะระบบ</p>
+        <div className="flex items-center justify-center gap-2 mb-2">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+            <span className="text-xs font-bold text-slate-700">ฐานข้อมูลออนไลน์</span>
+        </div>
+      </div>
+
       <button 
         onClick={handleDbSync}
         disabled={syncing}
         className={`px-10 py-5 rounded-3xl font-black text-white transition-all flex items-center gap-3 shadow-xl ${syncing ? 'bg-slate-400' : 'bg-slate-900 hover:bg-indigo-600 shadow-slate-200 active:scale-95'}`}
       >
         {syncing ? <Activity size={20} className="animate-spin" /> : <ShieldAlert size={20} />}
-        {syncing ? 'กำลังปรับแต่งฐานข้อมูล...' : 'ตรวจสอบและอัปเดตระบบฐานข้อมูล'}
+        {syncing ? 'กำลังประมวลผลข้อมูล...' : 'อัปเดตโครงสร้างฐานข้อมูล'}
       </button>
       
       {syncStatus && (
-        <div className={`mt-4 p-6 rounded-3xl text-sm font-black flex items-center gap-4 ${syncStatus.includes('สำเร็จ') ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-red-50 text-red-700 border border-red-100'}`}>
-          {syncStatus.includes('สำเร็จ') ? <CheckCircle2 size={24} /> : <AlertCircle size={24} />}
+        <div className={`mt-4 p-4 rounded-xl text-xs font-bold ${syncStatus.includes('สำเร็จ') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
           {syncStatus}
         </div>
       )}
