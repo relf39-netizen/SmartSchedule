@@ -202,7 +202,7 @@ function SubjectManagerTab() {
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">ระดับชั้น</label>
               <select value={newSub.level} onChange={e => setNewSub({...newSub, level: e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm outline-none focus:border-indigo-500">
-                {['ม.1','ม.2','ม.3','ม.4','ม.5','ม.6'].map(m => <option key={m} value={m}>{m}</option>)}
+                {['อ.1','อ.2','อ.3','ป.1','ป.2','ป.3','ป.4','ป.5','ป.6','ม.1','ม.2','ม.3','ม.4','ม.5','ม.6'].map(m => <option key={m} value={m}>{m}</option>)}
               </select>
             </div>
             <div className="space-y-1">
@@ -507,15 +507,19 @@ function SystemSettingsView() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
-  const [newFixed, setNewFixed] = useState({ activity_name: '', day_of_week: 'Monday', period_number: 8, is_lunch_break: false });
-  const [lunchPeriod, setLunchPeriod] = useState(4);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const apiBase = '/server.cjs';
 
   const fetchData = async () => {
-    const [sRes, fRes] = await Promise.all([fetch(`${apiBase}/api/settings`), fetch(`${apiBase}/api/fixed-periods`)]);
-    setSettings(await sRes.json());
-    setFixedPeriods(await fRes.json());
-    setLoading(false);
+    try {
+      const [sRes, fRes] = await Promise.all([fetch(`${apiBase}/api/settings`), fetch(`${apiBase}/api/fixed-periods`)]);
+      if (sRes.ok) setSettings(await sRes.json());
+      if (fRes.ok) setFixedPeriods(await fRes.json());
+      setLoading(false);
+    } catch (err) {
+      console.error('Fetch System Data Error:', err);
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -523,45 +527,93 @@ function SystemSettingsView() {
   const handleSaveSettings = async (e: any) => {
     e.preventDefault();
     setSaving(true);
-    await fetch(`${apiBase}/api/settings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(settings)
-    });
+    try {
+      const res = await fetch(`${apiBase}/api/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+      });
+      if (res.ok) {
+        alert('บันทึกข้อมูลโรงเรียนเรียบร้อยแล้ว');
+      } else {
+        alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+      }
+    } catch (err) {
+      alert('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+    }
     setSaving(false);
-    alert('บันทึกข้อมูลเรียบร้อยแล้ว');
   };
 
   const handleAddFixed = async (e: any) => {
     e.preventDefault();
-    await fetch(`${apiBase}/api/fixed-periods`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newFixed)
+    try {
+      const method = editingId ? 'PUT' : 'POST';
+      const url = editingId ? `${apiBase}/api/fixed-periods/${editingId}` : `${apiBase}/api/fixed-periods`;
+      
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newFixed)
+      });
+      
+      if (res.ok) {
+        setNewFixed({ activity_name: '', day_of_week: 'Monday', period_number: 8, is_lunch_break: false });
+        setEditingId(null);
+        fetchData();
+        alert(editingId ? 'แก้ไขกิจกรรมสำเร็จ' : 'เพิ่มกิจกรรมสำเร็จ');
+      } else {
+        alert('ไม่สามารถบันทึกกิจกรรมได้');
+      }
+    } catch (err) {
+      alert('เกิดข้อผิดพลาดในการบันทึก');
+    }
+  };
+
+  const handleEditFixed = (f: FixedPeriod) => {
+    setNewFixed({
+      activity_name: f.activity_name,
+      day_of_week: f.day_of_week,
+      period_number: f.period_number,
+      is_lunch_break: f.is_lunch_break === true || (f as any).is_lunch_break === 1
     });
-    setNewFixed({ activity_name: '', day_of_week: 'Monday', period_number: 8, is_lunch_break: false });
-    fetchData();
+    setEditingId(f.id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSaveLunch = async () => {
-    await fetch(`${apiBase}/api/fixed-periods`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        activity_name: 'พักรับประทานอาหารกลางวัน',
-        day_of_week: 'Monday',
-        period_number: lunchPeriod,
-        is_lunch_break: true,
-        apply_all_week: true
-      })
-    });
-    fetchData();
-    alert('บันทึกเวลาพักกลางวัน 5 วันเรียบร้อยแล้ว');
+    try {
+      const res = await fetch(`${apiBase}/api/fixed-periods`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          activity_name: 'พักรับประทานอาหารกลางวัน',
+          day_of_week: 'Monday',
+          period_number: lunchPeriod,
+          is_lunch_break: true,
+          apply_all_week: true
+        })
+      });
+      if (res.ok) {
+        fetchData();
+        alert('บันทึกเวลาพักกลางวัน 5 วันเรียบร้อยแล้ว');
+      } else {
+        alert('ไม่สามารถบันทึกเวลาพักได้');
+      }
+    } catch (err) {
+      alert('เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว');
+    }
   };
 
   const handleDeleteFixed = async (id: number) => {
-    await fetch(`${apiBase}/api/fixed-periods/${id}`, { method: 'DELETE' });
-    fetchData();
+    if (!confirm('ยืนยันการลบรายการนี้?')) return;
+    try {
+      const res = await fetch(`${apiBase}/api/fixed-periods/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchData();
+      }
+    } catch (err) {
+      alert('ไม่สามารถลบรายการได้');
+    }
   };
 
   if (loading) return <div className="text-center py-20 text-slate-400 animate-pulse font-bold uppercase text-xs">กำลังโหลด...</div>;
@@ -661,9 +713,15 @@ function SystemSettingsView() {
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">คาบเรียนที่</label>
               <input type="number" required value={newFixed.period_number} onChange={e => setNewFixed({...newFixed, period_number: parseInt(e.target.value)})} className="w-full bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm outline-none" min="1" max="15" />
             </div>
-            <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all">
-              <Plus size={14} /> เพิ่มกิจกรรมคงที่
+            <button type="submit" className={`w-full text-white py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${editingId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+              {editingId ? <Save size={14} /> : <Plus size={14} />}
+              {editingId ? 'บันทึกการแก้ไขกิจกรรม' : 'เพิ่มกิจกรรมคงที่'}
             </button>
+            {editingId && (
+              <button type="button" onClick={() => { setEditingId(null); setNewFixed({ activity_name: '', day_of_week: 'Monday', period_number: 8, is_lunch_break: false }); }} className="w-full bg-slate-200 text-slate-600 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest mt-2">
+                ยกเลิกการแก้ไข
+              </button>
+            )}
           </form>
 
           <div className="space-y-3">
@@ -671,7 +729,10 @@ function SystemSettingsView() {
              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
               {fixedPeriods.length === 0 ? (
                 <div className="py-10 text-center text-slate-400 text-xs font-bold uppercase tracking-widest border border-dashed border-slate-200 rounded-2xl">ยังไม่มีกิจกรรมที่บันทึกไว้</div>
-              ) : fixedPeriods.sort((a,b) => a.day_of_week.localeCompare(b.day_of_week) || a.period_number - b.period_number).map(f => (
+              ) : [...fixedPeriods].sort((a,b) => {
+                const dayOrder: Record<string, number> = { 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5 };
+                return (dayOrder[a.day_of_week] || 9) - (dayOrder[b.day_of_week] || 9) || a.period_number - b.period_number;
+              }).map(f => (
                 <div key={f.id} className={`flex items-center justify-between p-4 border rounded-2xl group transition-all ${f.is_lunch_break ? 'bg-orange-50 border-orange-100' : 'bg-white border-slate-100 hover:border-amber-200'}`}>
                   <div className="flex items-center gap-3">
                     <div className={`p-2 rounded-lg ${f.is_lunch_break ? 'bg-orange-200 text-orange-700' : 'bg-slate-100 text-slate-500'}`}>
@@ -682,7 +743,10 @@ function SystemSettingsView() {
                       <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{f.day_of_week} • คาบที่ {f.period_number}</div>
                     </div>
                   </div>
-                  <button onClick={() => handleDeleteFixed(f.id)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <button onClick={() => handleEditFixed(f)} className="p-2 text-slate-300 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-all"><Activity size={16} /></button>
+                    <button onClick={() => handleDeleteFixed(f.id)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"><Trash2 size={16} /></button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -729,21 +793,31 @@ function AssignmentManager({ teachers }: { teachers: Teacher[] }) {
 
   const handleAdd = async (e: any) => {
     e.preventDefault();
-    await fetch(`${apiBase}/api/teaching-assignments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newAssign)
-    });
-    setNewAssign({
-      teacher_id: '',
-      subject_id: '',
-      class_id: '',
-      hours_per_week: 1,
-      is_double_period: false,
-      main_room_id: '',
-      backup_room_id: ''
-    });
-    fetchData();
+    try {
+      const res = await fetch(`${apiBase}/api/teaching-assignments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newAssign)
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setNewAssign({
+          teacher_id: '',
+          subject_id: '',
+          class_id: '',
+          hours_per_week: 1,
+          is_double_period: false,
+          main_room_id: '',
+          backup_room_id: ''
+        });
+        fetchData();
+        alert('บันทึกภาระงานสอนสำเร็จ');
+      } else {
+        alert(`ผิดพลาด: ${data.message || 'ไม่สามารถบันทึกข้อมูลได้'}`);
+      }
+    } catch (err) {
+      alert('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');
+    }
   };
 
   const handleDelete = async (id: number) => {

@@ -253,6 +253,19 @@ async function startServer() {
     } catch (error) { res.status(500).send(); }
   });
 
+  app.put('/api/fixed-periods/:id', async (req, res) => {
+    const user = req.session?.user;
+    if (user?.role !== 'admin' || !user.school) return res.status(403).send();
+    const { activity_name, day_of_week, period_number, is_lunch_break } = req.body;
+    try {
+      await pool.execute(
+        'UPDATE fixed_periods SET activity_name=?, day_of_week=?, period_number=?, is_lunch_break=? WHERE id=? AND school=?',
+        [activity_name, day_of_week, period_number, is_lunch_break ? 1 : 0, req.params.id, user.school]
+      );
+      res.json({ success: true });
+    } catch (error) { res.status(500).send(); }
+  });
+
   // Basic Management Routes (Subjects, Classes, Rooms)
   app.get('/api/subjects', async (req, res) => {
     const school = req.session?.user?.school;
@@ -353,17 +366,18 @@ async function startServer() {
     
     try {
       if (!teacher_id || !subject_id || !class_id) {
-        return res.status(400).json({ success: false, message: 'Missing required fields' });
+        return res.status(400).json({ success: false, message: 'กรุณาเลือก ครูผู้สอน วิชา และกลุ่มเรียน ให้ครบถ้วน' });
       }
 
-      await pool.execute(
+      const [res_insert] = await pool.execute(
         'INSERT INTO teaching_assignments (school, teacher_id, subject_id, class_id, hours_per_week, is_double_period, main_room_id, backup_room_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         [user.school, teacher_id, subject_id, class_id, hours_per_week, is_double_period ? 1 : 0, main_room_id || null, backup_room_id || null]
       );
+      console.log('Assignment added:', res_insert);
       res.json({ success: true });
     } catch (error) { 
-      console.error('Teaching Assignment Error:', error);
-      res.status(500).json({ success: false, message: error.message }); 
+      console.error('Teaching Assignment Error Details:', error);
+      res.status(500).json({ success: false, message: `เกิดข้อผิดพลาดรหัส: ${error.code} - ${error.message}` }); 
     }
   });
 
