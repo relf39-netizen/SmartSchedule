@@ -508,6 +508,8 @@ function SystemSettingsView() {
   const [saving, setSaving] = useState(false);
   
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [newFixed, setNewFixed] = useState({ activity_name: '', day_of_week: 'Monday', period_number: 8, is_lunch_break: false });
+  const [lunchPeriod, setLunchPeriod] = useState(4);
   const apiBase = '/server.cjs';
 
   const fetchData = async () => {
